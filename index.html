@@ -19,8 +19,21 @@
 
 <body>
     <div id="app">
-        <canvas id="canvas"></canvas>
+        <div id="canvas-row">
+            <aside id="style-panel" aria-label="Subtitle styles"></aside>
+            <canvas id="canvas"></canvas>
+        </div>
         <div id="timeline">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; align-items:center;">
+                <label style="font-size:14px;">
+                    Transcript (.srt)
+                    <input id="transcriptInput" type="file" accept=".srt" />
+                </label>
+                <label style="font-size:14px;">
+                    Audio
+                    <input id="audioInput" type="file" accept="audio/*" />
+                </label>
+            </div>
             TimeLine
             <div id="time_region">
                 <div id="time_content">
@@ -31,6 +44,7 @@
         </div>
     </div>
     <script type="module" src="./index.js"></script>
+    <script type="module" src="./animation.js"></script>
 </body>
 
 </html>

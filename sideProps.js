@@ -176,94 +176,138 @@ function timestampToMs(timestamp) {
   return out;
 }
 
-export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx) {
+function applyTextStyles(ctx, styles) {
+  if (!ctx) return;
+  ctx.save();
+  ctx.font = styles.font || "";
+  ctx.fillStyle = styles.fillStyle || "#000000";
+  ctx.strokeStyle = styles.strokeStyle || "transparent";
+  ctx.lineWidth = styles.lineWidth || 0;
+  ctx.shadowBlur = styles.shadowBlur || 0;
+  ctx.shadowColor = styles.shadowColor || "rgba(0, 0, 0, 0)";
+  ctx.shadowOffsetX = styles.shadowOffsetX || 0;
+  ctx.shadowOffsetY = styles.shadowOffsetY || 0;
+  ctx.textAlign = styles.textAlign || "left";
+}
+
+export function renderInstanceSubtitle(
+  jsonSubtitles,
+  char_per_line,
+  ctx,
+  incomingStyles = {},
+) {
+  
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
   const renderDuration = i.end - i.start;
-
   let prev_timestamp = null;
   let lastStyledIndex = -1;
-  let fontSize = 200;
+  const canvasWidth = ctx?.canvas?.width || 1920;
+  const canvasHeight = ctx?.canvas?.height || 1080;
+  const per_line_chaching = new Map(); //used for chaching char per line
+  let pr_ms_FrameID = null;
+  let styles = {
+    font: incomingStyles.font || `${incomingStyles.fontSize || 200}px ${incomingStyles.fontFamily || pickRandom(globalCanvasTextProperties.English_fonts)}`,
+    fillStyle: incomingStyles.fillStyle || "#4800ff",
+    strokeStyle: incomingStyles.strokeStyle || "#000000",
+    lineWidth: incomingStyles.lineWidth || 2,
+    shadowBlur: incomingStyles.shadowBlur || 10,
+    shadowColor: incomingStyles.shadowColor || "rgba(0, 0, 0, 0.96)",
+    shadowOffsetX: incomingStyles.shadowOffsetX || 10,
+    shadowOffsetY: incomingStyles.shadowOffsetY || 10,
+    textAlign: incomingStyles.textAlign || "left",
+  };
+  let lastPushedIndex = -1;
+  let bigWordIndex = -1;
 
-  function countDownTimer(timestamp) {
+  function per_ms_render(timestamp) {
+
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
 
-    if (!ctx) return;
+    if (!ctx) return null;
     const localProgress = Math.min(deltaTime / renderDuration, 1); // (deltaTime = timepassed) * totalTime  = localProgress b/w[0,1]
     const visibleCharsIndex = Math.min(
       Math.floor(sentence.length * localProgress),
       sentence.length - 1,
     );
-    // console.log("visible char", visibleCharsIndex);
+    let x =
+      canvasWidth / 2.5 +
+      (visibleCharsIndex % 2 === 0 ? 1 : -1 * deltaTime) / 4;
 
-    // const textToDraw = sentence
-    //   .slice(
-    //     Math.floor(visibleCharsIndex / char_per_line),
-    //     Math.floor(visibleCharsIndex / char_per_line) + char_per_line,
-    //   )
-    //   .join(" ");
-    let positionAlongX = (visibleCharsIndex % char_per_line) * 300;
+    let y =
+      (((2.3 / 4) * canvasHeight) / char_per_line) *
+        (visibleCharsIndex % char_per_line) +
+      200;
+  
+
     if (
       visibleCharsIndex % char_per_line === 0 &&
       visibleCharsIndex !== lastStyledIndex
     ) {
       lastStyledIndex = visibleCharsIndex;
-      console.log("HIii", visibleCharsIndex);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px`.concat(
-        globalCanvasTextProperties.English_fonts[
-          Math.floor(Math.random() * 20)
-        ],
-      );
-
-      ctx.fillStyle = "#00ffea";
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-      ctx.textAlign = "left";
+      per_line_chaching.clear();
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      styles = {
+        ...styles,
+        ...incomingStyles,
+        font: incomingStyles.font || `${incomingStyles.fontSize || 200}px ${incomingStyles.fontFamily || pickRandom(globalCanvasTextProperties.English_fonts)}`,
+      };
     }
+
+    // //Render all chached queue----------------------
     const textToDraw = sentence[Math.floor(visibleCharsIndex)];
 
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const metrics = ctx.measureText(textToDraw);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    // 1. Actual rendered pixel height of the specific string
-    const actualHeight =
-      metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    // Render paper.jpg as background
+    const bgImage = new Image();
+    bgImage.src = "./paper.jpg";
+    ctx.drawImage(bgImage, 0, 0, canvasWidth, canvasHeight);
+    // bgImage.onload = () => {
+    // };
 
-    // 2. Font bounding box height (the entire height of the font container)
-    const fontHeight =
-      metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+    // x = SlideIn(visibleCharsIndex, deltaTime, char_per_line, {
+    //   start: canvas.width / 2,
+    // });
+    if (char_per_line) {
+      applyTextStyles(ctx, styles);
+      ctx.strokeText(textToDraw, x, y);
+      ctx.fillText(textToDraw, x, y);
+      ctx.restore();
+    }
 
-    // console.log((visibleCharsIndex % char_per_line) - char_per_line / 2);
+    if (visibleCharsIndex !== lastStyledIndex) {
+      per_line_chaching.forEach((cachedStyle, cachedIndex) => {
+        if (cachedIndex === visibleCharsIndex) return;
+        applyTextStyles(ctx, cachedStyle);
+        ctx.strokeText(cachedStyle.text, cachedStyle.posx, cachedStyle.posy);
+        ctx.fillText(cachedStyle.text, cachedStyle.posx, cachedStyle.posy);
+        ctx.restore();
+      });
+      //On change in index reset x
+    }
 
-    ctx.fillText(
-      textToDraw,
-      canvas.width / 2.5 +
-        ((visibleCharsIndex % char_per_line) - char_per_line / 2) *
-          localProgress *
-          200,
-      canvas.height / 2 + actualHeight*2,
-    );
+    per_line_chaching.set(visibleCharsIndex, {
+      text: sentence[Math.floor(visibleCharsIndex)],
+      posx: x,
+      posy: y,
+      font: styles.font,
+      fillStyle: styles.fillStyle,
+      strokeStyle: styles.strokeStyle,
+      lineWidth: styles.lineWidth,
+      shadowBlur: styles.shadowBlur,
+      shadowColor: styles.shadowColor,
+      shadowOffsetX: styles.shadowOffsetX,
+      shadowOffsetY: styles.shadowOffsetY,
+      textAlign: styles.textAlign,
+    });
+
     if (localProgress < 1) {
-      requestAnimationFrame(countDownTimer);
+      pr_ms_FrameID = requestAnimationFrame(per_ms_render);
     }
   }
-  requestAnimationFrame(countDownTimer);
-}
-
-// Generate one random style object ----
-export function generateRandomWordStyle(config) {
-  const style = {};
-  for (const key in config) {
-    style[key] = pickRandom(config[key]);
-  }
-  return style;
-}
-
-//  Generate styles array, one per word ----
-export function generateWordStyles(words, config) {
-  return words.map(() => generateRandomWordStyle(config));
+  
+  pr_ms_FrameID = requestAnimationFrame(per_ms_render);
+  return pr_ms_FrameID;
 }
