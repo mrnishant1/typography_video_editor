@@ -1,3 +1,5 @@
+import { drawTextInBox, Layout } from "./guillitine.js";
+
 export const globalCanvasTextProperties = {
   English_fonts: [
     "'Akronim'",
@@ -58,37 +60,15 @@ export const globalCanvasTextProperties = {
 
   fontWeight: ["400", "500", "600", "700", "800", "900"],
   fontStyle: ["normal", "italic"],
-  fontSize: [36, 42, 48, 56, 64, 72, 80, 96],
-  color: [
-    "#FFFFFF",
-    "#000000",
-    "#FFD700",
-    "#00FFFF",
-    "#FF6B6B",
-    "#A0E7E5",
-    "#FF3CAC",
-    "#7DFFB3",
-    "#FFA62B",
-    "#845EC2",
-  ],
+  fontSize: [50, 100, 150, 200, 250, 300, 350, 400],
+  color: ["#FFFFFF", "#000000", "#FFD700", "#00FFFF", "#FF6B6B", "#A0E7E5", "#FF3CAC", "#7DFFB3", "#FFA62B", "#845EC2"],
   strokeColor: ["#000000", "#FFFFFF", "transparent", "#111111"],
   strokeWidth: [0, 1, 2, 3, 4],
-  shadowColor: [
-    "rgba(0,0,0,0.8)",
-    "rgba(0,0,0,0.5)",
-    "rgba(255,255,255,0.4)",
-    "transparent",
-  ],
+  shadowColor: ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.5)", "rgba(255,255,255,0.4)", "transparent"],
   shadowBlur: [0, 4, 8, 12, 20],
   shadowOffsetX: [-4, -2, 0, 2, 4],
   shadowOffsetY: [-4, -2, 0, 2, 4],
-  backgroundColor: [
-    "rgba(0,0,0,0.6)",
-    "rgba(20,20,20,0.7)",
-    "rgba(255,255,255,0.15)",
-    "transparent",
-    "rgba(255,0,100,0.3)",
-  ],
+  backgroundColor: ["rgba(0,0,0,0.6)", "rgba(20,20,20,0.7)", "rgba(255,255,255,0.15)", "transparent", "rgba(255,0,100,0.3)"],
   textAlign: ["left", "center", "right"],
   rotation: [-10, -5, 0, 5, 10],
   scale: [0.9, 1.0, 1.1, 1.2],
@@ -168,15 +148,11 @@ function timestampToMs(timestamp) {
   const [hms, millis] = timestamp.split(",");
   const [hours, minutes, seconds] = hms.split(":").map(Number);
 
-  const out =
-    hours * 60 * 60 * 1000 +
-    minutes * 60 * 1000 +
-    seconds * 1000 +
-    Number(millis);
+  const out = hours * 60 * 60 * 1000 + minutes * 60 * 1000 + seconds * 1000 + Number(millis);
   return out;
 }
 
-function applyTextStyles(ctx, styles) {
+export function applyTextStyles(ctx, styles) {
   if (!ctx) return;
   ctx.save();
   ctx.font = styles.font || "";
@@ -190,13 +166,7 @@ function applyTextStyles(ctx, styles) {
   ctx.textAlign = styles.textAlign || "left";
 }
 
-export function renderInstanceSubtitle(
-  jsonSubtitles,
-  char_per_line,
-  ctx,
-  incomingStyles = {},
-) {
-  
+export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomingStyles = {}) {
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
   const renderDuration = i.end - i.start;
@@ -219,79 +189,70 @@ export function renderInstanceSubtitle(
   };
   let lastPushedIndex = -1;
   let bigWordIndex = -1;
+  let layout = null;
+  let count = null;
+  const fh = document.getElementsByName("fontSize")[0].value;
+  const ms = 200;
 
   function per_ms_render(timestamp) {
-
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
 
     if (!ctx) return null;
     const localProgress = Math.min(deltaTime / renderDuration, 1); // (deltaTime = timepassed) * totalTime  = localProgress b/w[0,1]
-    const visibleCharsIndex = Math.min(
-      Math.floor(sentence.length * localProgress),
-      sentence.length - 1,
-    );
-    let x =
-      canvasWidth / 2.5 +
-      (visibleCharsIndex % 2 === 0 ? 1 : -1 * deltaTime) / 4;
+    const visibleCharsIndex = Math.min(Math.floor(sentence.length * localProgress), sentence.length - 1);
+    // let x = canvasWidth / 2.5 + (visibleCharsIndex % 2 === 0 ? 1 : -1 * deltaTime) / 4;
 
-    let y =
-      (((2.3 / 4) * canvasHeight) / char_per_line) *
-        (visibleCharsIndex % char_per_line) +
-      200;
-  
-
-    if (
-      visibleCharsIndex % char_per_line === 0 &&
-      visibleCharsIndex !== lastStyledIndex
-    ) {
+    // let y = (((2.3 / 4) * canvasHeight) / char_per_line) * (visibleCharsIndex % char_per_line) + 200;
+    if (visibleCharsIndex % char_per_line === 0 && visibleCharsIndex !== lastStyledIndex) {
       lastStyledIndex = visibleCharsIndex;
       per_line_chaching.clear();
+
+      //Making parent Box Layout for next text batch
+      const canvasRect = ctx.canvas?.getBoundingClientRect ? ctx.canvas.getBoundingClientRect() : { left: 0, top: 0 };
+      layout = new Layout({
+        x: 300,
+        y: 300,
+        width: canvasWidth * 0.8,
+        height: canvasHeight * 0.8,
+      });
+
+      count = layout.fill_parentBox(fh, ms);
+
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       styles = {
         ...styles,
         ...incomingStyles,
         font: incomingStyles.font || `${incomingStyles.fontSize || 200}px ${incomingStyles.fontFamily || pickRandom(globalCanvasTextProperties.English_fonts)}`,
       };
+      if (styles.fontFamily == "__random__") {
+        console.log("random");
+        styles.fontFamily = globalCanvasTextProperties.English_fonts[Math.floor(Math.random() * globalCanvasTextProperties.English_fonts.length)];
+      }
     }
 
     // //Render all chached queue----------------------
     const textToDraw = sentence[Math.floor(visibleCharsIndex)];
+    const textBox = layout.boxes[Math.min(visibleCharsIndex, count)];
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    // Render paper.jpg as background
-    const bgImage = new Image();
-    bgImage.src = "./paper.jpg";
-    ctx.drawImage(bgImage, 0, 0, canvasWidth, canvasHeight);
-    // bgImage.onload = () => {
-    // };
-
-    // x = SlideIn(visibleCharsIndex, deltaTime, char_per_line, {
-    //   start: canvas.width / 2,
-    // });
     if (char_per_line) {
-      applyTextStyles(ctx, styles);
-      ctx.strokeText(textToDraw, x, y);
-      ctx.fillText(textToDraw, x, y);
-      ctx.restore();
+      console.log(layout ? "yes we have layout" : "fuck layout not ");
+      drawTextInBox(textToDraw, ctx, textBox, fh, styles);
     }
 
     if (visibleCharsIndex !== lastStyledIndex) {
       per_line_chaching.forEach((cachedStyle, cachedIndex) => {
         if (cachedIndex === visibleCharsIndex) return;
-        applyTextStyles(ctx, cachedStyle);
-        ctx.strokeText(cachedStyle.text, cachedStyle.posx, cachedStyle.posy);
-        ctx.fillText(cachedStyle.text, cachedStyle.posx, cachedStyle.posy);
-        ctx.restore();
+        drawTextInBox(cachedStyle.text, ctx, cachedStyle.box, cachedStyle.fh, cachedStyle);
       });
       //On change in index reset x
     }
 
     per_line_chaching.set(visibleCharsIndex, {
       text: sentence[Math.floor(visibleCharsIndex)],
-      posx: x,
-      posy: y,
+      posx: textBox.x,
+      posy: textBox.y,
       font: styles.font,
       fillStyle: styles.fillStyle,
       strokeStyle: styles.strokeStyle,
@@ -301,13 +262,16 @@ export function renderInstanceSubtitle(
       shadowOffsetX: styles.shadowOffsetX,
       shadowOffsetY: styles.shadowOffsetY,
       textAlign: styles.textAlign,
+      fontFamily: incomingStyles.fontFamily,
+      box: textBox,
+      fh: fh,
     });
 
     if (localProgress < 1) {
       pr_ms_FrameID = requestAnimationFrame(per_ms_render);
     }
   }
-  
+
   pr_ms_FrameID = requestAnimationFrame(per_ms_render);
   return pr_ms_FrameID;
 }

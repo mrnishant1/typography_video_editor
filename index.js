@@ -4,16 +4,16 @@ import {
   renderInstanceSubtitle,
   sentenceToWords,
   srtToJson,
-} from "./sideProps.js";
-import { pickRandom } from "./sideProps.js";
+} from "./wordrenderer.js";
+import { pickRandom } from "./wordrenderer.js";
 
 window.subtitleStyleOptions = {
-  fontFamily: "'Akronim'",
+  fontFamily: "'Creepster'",
   fontSize: "200",
   fontWeight: "400",
   fontStyle: "normal",
-  font: "200px 'Akronim'",
-  fillStyle: "#4800ff",
+  font: "200px 'Creepster'",
+  fillStyle: "#a27dff",
   strokeStyle: "#000000",
   lineWidth: 2,
   shadowBlur: 10,
@@ -21,6 +21,9 @@ window.subtitleStyleOptions = {
   shadowOffsetX: 10,
   shadowOffsetY: 10,
   textAlign: "left",
+  rotation: "0",
+  scale: "1",
+  opacity: "1",
 };
 
 const font = new FontFace("MyFont", "url('lavish.ttf')");
@@ -40,7 +43,66 @@ if (canvas) {
 }
 //=======================Load Transcript============================
 
-let transcript = ``
+let transcript = `1
+00:00:00,000 --> 00:00:00,350
+Welcome!
+
+2
+00:00:00,710 --> 00:00:01,750
+Thanks for stopping by.
+
+3
+00:00:02,210 --> 00:00:05,510
+Just upload .srt subtitle file and audio to
+
+4
+00:00:05,510 --> 00:00:06,770
+generate dynamic subtitle.
+
+5
+00:00:07,029 --> 00:00:08,950
+I built this subtitle generator to make creating
+
+6
+00:00:08,950 --> 00:00:11,390
+clean, accurate subtitles as simple and fast as
+
+7
+00:00:11,390 --> 00:00:11,790
+possible.
+
+8
+00:00:12,530 --> 00:00:15,650
+Whether you're making YouTube videos, reels, tutorials, or
+
+9
+00:00:15,650 --> 00:00:17,590
+anything else, I hope this tool saves you
+
+10
+00:00:17,590 --> 00:00:19,290
+time and makes your workflow a little easier.
+
+11
+00:00:20,230 --> 00:00:21,850
+This project is built and maintained by a
+
+12
+00:00:21,850 --> 00:00:24,290
+single developer, and I'm constantly working to improve
+
+13
+00:00:24,290 --> 00:00:25,070
+it based on feedback.
+
+14
+00:00:25,710 --> 00:00:27,390
+Thank you for using the site, and happy
+
+15
+00:00:27,390 --> 00:00:27,730
+creating!
+`;
 
 let jsonSubtitles = srtToJson(transcript);
 const wordJsonSub = sentenceToWords(jsonSubtitles);
@@ -66,8 +128,10 @@ function renderTimeline(subtitles) {
   const subtitle_in_timeline = document.getElementById("subtitle_in_timeline");
   if (subtitle_in_timeline) {
     const blocks = jsonSubtitles.map((element) => {
-      const start = (element.start / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
-      const end = (element.end / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
+      const start =
+        (element.start / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
+      const end =
+        (element.end / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
       const width = end - start;
       return `<div id="subtitle" style="position:absolute; left:${start}px; width:${width}px; height:100%; background:rgba(255, 0, 0, 0.38); color:white; font-size:14px; overflow:hidden;
          text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; padding:2px 4px;">${element.text}</div>`;
@@ -170,27 +234,56 @@ function handleAudioUpload(event) {
   isclicked = false;
 }
 
-
 //===================Handle Play/Stop/Restart================================
 let audioPlayer = null;
 let audioSourceUrl = null;
+let backgroundImageSrc = null
 
 function playAu() {
   if (!audioPlayer) {
-    audioPlayer = new Audio("./final.m4a");
+    audioPlayer = new Audio("./speech.mp3");
   }
 
   audioPlayer.pause();
   audioPlayer.currentTime = 0;
   audioPlayer.play();
 }
+//=======================Background===========================================
+function handleBackgroundUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
 
+  if (backgroundImageSrc && backgroundImageSrc.startsWith("blob:")) {
+    URL.revokeObjectURL(backgroundImageSrc);
+  }
 
+  backgroundImageSrc = URL.createObjectURL(file);
+  const bgImage = new Image();
+  bgImage.onload = () => {
+    if (canvas) {
+      canvas.style.backgroundImage = `url(${backgroundImageSrc})`;
+      canvas.style.backgroundSize = "cover";
+      canvas.style.backgroundPosition = "center";
+    }
+  };
+  bgImage.onerror = () => {
+    console.error("Failed to load background image", file.name);
+  };
+  bgImage.src = backgroundImageSrc;
+}
+
+function getWordsPerRender() {
+  return parseInt(
+    document.getElementsByName("Word_per_render")[0]?.value,
+    10
+  ) || 4;
+}
 let isclicked = false;
 document.getElementById("play").addEventListener("click", () => {
   if (!isclicked) {
     playAu();
-    timelineRenderer(jsonSubtitles, 4);
+    console.log(Word_per_render);
+    timelineRenderer(jsonSubtitles, getWordsPerRender());
     isclicked = true;
   } else {
     restartTimeline();
@@ -207,13 +300,22 @@ function stopTimeline() {
   }
 }
 
+
+
 function restartTimeline() {
   stopTimeline();
   playAu();
-  timelineRenderer(jsonSubtitles, 4);
+  timelineRenderer(jsonSubtitles, getWordsPerRender());
   stopTimelineRenderer = false;
 }
 
 window.restartTimelineRenderer = restartTimeline;
-document.getElementById("transcriptInput")?.addEventListener("change", handleTranscriptUpload);
-document.getElementById("audioInput")?.addEventListener("change", handleAudioUpload);
+document
+  .getElementById("transcriptInput")
+  ?.addEventListener("change", handleTranscriptUpload);
+document
+  .getElementById("audioInput")
+  ?.addEventListener("change", handleAudioUpload);
+document
+  .getElementById("backgroundInput")
+  ?.addEventListener("change", handleBackgroundUpload);

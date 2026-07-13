@@ -1,4 +1,4 @@
-import { globalCanvasTextProperties } from "./sideProps.js";
+import { globalCanvasTextProperties } from "./wordrenderer.js";
 
 const panel = document.getElementById("style-panel");
 const properties = globalCanvasTextProperties;
@@ -21,11 +21,11 @@ const labels = {
 };
 
 const options = window.subtitleStyleOptions || {
-  fontFamily: "'Akronim'",
+  fontFamily: "'Creepster'",
   fontSize: "200",
   fontWeight: "400",
   fontStyle: "normal",
-  font: "200px 'Akronim'",
+  font: "200px 'Creepster'",
   fillStyle: "#4800ff",
   strokeStyle: "#000000",
   lineWidth: "2",
@@ -35,6 +35,9 @@ const options = window.subtitleStyleOptions || {
   shadowOffsetY: "10",
   backgroundColor: "transparent",
   textAlign: "left",
+  rotation: "0",
+  scale: "1",
+  opacity: "1",
 };
 options.font = `${options.fontSize}px ${options.fontFamily}`;
 window.subtitleStyleOptions = options;
@@ -52,10 +55,19 @@ function addSelect(name, values, title = labels[name] || name) {
   label.textContent = title;
   const select = document.createElement("select");
   select.name = name;
+  // normalize values: accept array, or object map
+  if (!values) return;
+  if (!Array.isArray(values) && typeof values === "object") {
+    values = Object.entries(values).map(([k, v]) => {
+      // prefer v as label if it's a string, otherwise use key
+      return { text: typeof v === "string" ? v : String(v), value: k };
+    });
+  }
+
   values.forEach((item) => {
-    const value = typeof item === "string" ? item : item.value;
-    const text = typeof item === "string" ? item : item.text;
-    select.add(new Option(text, value, false, value === getCurrentValue(name)));
+    const value = typeof item === "string" ? item : (item.value ?? String(item));
+    const text = typeof item === "string" ? item : (item.text ?? String(item));
+    select.add(new Option(text, value, false, value === String(getCurrentValue(name))));
   });
   label.append(select);
   panel.append(label);
@@ -65,10 +77,11 @@ function addSelect(name, values, title = labels[name] || name) {
 //Pannel UI
 if (panel) {
   const fontChoices = [
-    { text: "Random fonts", value: "__random__" },
+    { text: "Random fonts", value: "__random__"},
     ...properties.English_fonts,
     ...properties.Hindi_fonts.map((font) => font.replace(/^\d+px\s+/, "")),
   ];
+  addSelect("Word_per_render", [1,2,3,4,5,6,7,8], "Word per render");
   addSelect("font", fontChoices, "Font");
   Object.entries(properties)
     .filter(([name]) => name !== "English_fonts" && name !== "Hindi_fonts")
