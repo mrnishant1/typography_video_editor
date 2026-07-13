@@ -282,7 +282,7 @@ let isclicked = false;
 document.getElementById("play").addEventListener("click", () => {
   if (!isclicked) {
     playAu();
-    console.log(Word_per_render);
+    console.log(getWordsPerRender());
     timelineRenderer(jsonSubtitles, getWordsPerRender());
     isclicked = true;
   } else {
