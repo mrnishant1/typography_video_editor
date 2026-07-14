@@ -1,10 +1,6 @@
 const canvas = document.getElementById("canvas");
-import {
-  globalCanvasTextProperties,
-  renderInstanceSubtitle,
-  sentenceToWords,
-  srtToJson,
-} from "./wordrenderer.js";
+import { record } from "./videorecord.js";
+import { globalCanvasTextProperties, renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer.js";
 import { pickRandom } from "./wordrenderer.js";
 
 window.subtitleStyleOptions = {
@@ -13,7 +9,7 @@ window.subtitleStyleOptions = {
   fontWeight: "400",
   fontStyle: "normal",
   font: "200px 'Creepster'",
-  fillStyle: "#a27dff",
+  fillStyle: "#FFFFFF",
   strokeStyle: "#000000",
   lineWidth: 2,
   shadowBlur: 10,
@@ -128,10 +124,8 @@ function renderTimeline(subtitles) {
   const subtitle_in_timeline = document.getElementById("subtitle_in_timeline");
   if (subtitle_in_timeline) {
     const blocks = jsonSubtitles.map((element) => {
-      const start =
-        (element.start / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
-      const end =
-        (element.end / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
+      const start = (element.start / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
+      const end = (element.end / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
       const width = end - start;
       return `<div id="subtitle" style="position:absolute; left:${start}px; width:${width}px; height:100%; background:rgba(255, 0, 0, 0.38); color:white; font-size:14px; overflow:hidden;
          text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; padding:2px 4px;">${element.text}</div>`;
@@ -143,11 +137,7 @@ function renderTimeline(subtitles) {
 renderTimeline(jsonSubtitles);
 
 //===================Timeline Renderer=================================
-function timelineRenderer(
-  jsonSubtitles,
-  char_per_line = 1,
-  timelineLength = audioTimeline,
-) {
+function timelineRenderer(jsonSubtitles, char_per_line = 1, timelineLength = audioTimeline) {
   const scaleFactor = 1;
   let prev_timestamp = null;
   let globalTimelineProgress = 0;
@@ -171,20 +161,10 @@ function timelineRenderer(
 
     const currentSubtitle = jsonSubtitles[current_subtitle];
 
-    if (
-      currentSubtitle &&
-      deltaTime >= currentSubtitle.start &&
-      deltaTime <= currentSubtitle.end &&
-      renderedSubtitle !== current_subtitle
-    ) {
+    if (currentSubtitle && deltaTime >= currentSubtitle.start && deltaTime <= currentSubtitle.end && renderedSubtitle !== current_subtitle) {
       //start rendering
 
-      pr_ms_FrameID = renderInstanceSubtitle(
-        currentSubtitle,
-        char_per_line,
-        ctx,
-        window.subtitleStyleOptions,
-      );
+      pr_ms_FrameID = renderInstanceSubtitle(currentSubtitle, char_per_line, ctx, window.subtitleStyleOptions);
       renderedSubtitle = current_subtitle;
     }
 
@@ -237,7 +217,7 @@ function handleAudioUpload(event) {
 //===================Handle Play/Stop/Restart================================
 let audioPlayer = null;
 let audioSourceUrl = null;
-let backgroundImageSrc = null
+let backgroundImageSrc = null;
 
 function playAu() {
   if (!audioPlayer) {
@@ -248,6 +228,7 @@ function playAu() {
   audioPlayer.currentTime = 0;
   audioPlayer.play();
 }
+
 //=======================Background===========================================
 function handleBackgroundUpload(event) {
   const file = event.target.files?.[0];
@@ -271,18 +252,29 @@ function handleBackgroundUpload(event) {
   };
   bgImage.src = backgroundImageSrc;
 }
+//Default Image
+backgroundImageSrc = "./bg.jpeg";
+const bgImage = new Image();
+bgImage.onload = () => {
+  if (canvas) {
+    canvas.style.backgroundImage = `url(${backgroundImageSrc})`;
+    canvas.style.backgroundSize = "cover";
+    canvas.style.backgroundPosition = "center";
+  }
+};
+bgImage.onerror = () => {
+  console.error("Failed to load background image", file.name);
+};
+bgImage.src = backgroundImageSrc;
 
 function getWordsPerRender() {
-  return parseInt(
-    document.getElementsByName("Word_per_render")[0]?.value,
-    10
-  ) || 4;
+  return parseInt(document.getElementsByName("Word_per_render")[0]?.value, 10) || 4;
 }
 let isclicked = false;
 document.getElementById("play").addEventListener("click", () => {
   if (!isclicked) {
     playAu();
-    console.log(getWordsPerRender());
+    // console.log(getWordsPerRender());
     timelineRenderer(jsonSubtitles, getWordsPerRender());
     isclicked = true;
   } else {
@@ -300,8 +292,6 @@ function stopTimeline() {
   }
 }
 
-
-
 function restartTimeline() {
   stopTimeline();
   playAu();
@@ -310,12 +300,31 @@ function restartTimeline() {
 }
 
 window.restartTimelineRenderer = restartTimeline;
-document
-  .getElementById("transcriptInput")
-  ?.addEventListener("change", handleTranscriptUpload);
-document
-  .getElementById("audioInput")
-  ?.addEventListener("change", handleAudioUpload);
-document
-  .getElementById("backgroundInput")
-  ?.addEventListener("change", handleBackgroundUpload);
+document.getElementById("transcriptInput")?.addEventListener("change", handleTranscriptUpload);
+document.getElementById("audioInput")?.addEventListener("change", handleAudioUpload);
+document.getElementById("backgroundInput")?.addEventListener("change", handleBackgroundUpload);
+
+
+//==================================Record ========================================
+function recordingVideo(canvas, time) {
+  
+  const recording = record(canvas, time);
+  // play it on another video element
+  var video$ = document.createElement("video");
+  document.body.appendChild(video$);
+  recording.then((url) => video$.setAttribute("src", url));
+
+  // download it
+  var link$ = document.createElement("a");
+  link$.innerText = "download";
+  link$.setAttribute("download", "recordingVideo");
+  recording.then((url) => {
+    link$.setAttribute("href", url);
+    link$.click();
+  });
+}
+
+document.getElementById("recordButton").addEventListener("click", (e) => {
+  restartTimeline()
+  recordingVideo(canvas,audioTimeline);
+});

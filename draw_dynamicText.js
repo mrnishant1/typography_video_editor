@@ -35,7 +35,7 @@ export class Layout {
 
     const rect = this.freeRects.splice(idx, 1)[0];
 
-    // const orientation = Math.random() < 0.5 ? 0 : 90;
+    // const orientation = Math.random() < 0.7 ? 0 : 90;
     const orientation = 0;
     let width, height;
 
@@ -163,37 +163,4 @@ export function drawTextInBox(text, ctx, box, fontHeight, styles = window.subtit
   }
 
   ctx.restore();
-}
-
-function run(ctx, parentBoxWidth, parentBoxHeight, max_fontHeight, minimum_slot_size) {
-  const pw = parentBoxWidth;
-  const ph = parentBoxHeight;
-  const fh = max_fontHeight;
-  const ms = minimum_slot_size;
-
-  if (!ctx) {
-    console.log("no ctx");
-    return;
-  }
-  ctx.clearRect(0, 0, pw, ph);
-
-  const layout = new Layout({ x: 0, y: 0, width: pw, height: ph });
-  const count = layout.fill_parentBox(fh, ms);
-
-  // parent border
-  ctx.strokeStyle = "#666";
-  ctx.strokeRect(0, 0, pw, ph);
-
-  let overlapCheckFailed = false;
-
-  //Help Draw text in and a faint outline so you can still see the slot boundaries under the text
-  for (const box of layout.boxes) {
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
-    ctx.strokeRect(box.x, box.y, box.width, box.height);
-
-    drawTextInBox(text, ctx, box, fh);
-  }
-
-  document.getElementById("stats").textContent =
-    `${count} boxes placed. Overlap check: ${overlapCheckFailed ? "FAILED \u2014 overlap detected" : "passed, no overlaps"}. ` + `Free rects remaining (too small to use): ${layout.freeRects.length}`;
 }

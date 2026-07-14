@@ -1,4 +1,4 @@
-import { drawTextInBox, Layout } from "./guillitine.js";
+import { drawTextInBox, Layout } from "./draw_dynamicText.js";
 
 export const globalCanvasTextProperties = {
   English_fonts: [
@@ -58,16 +58,16 @@ export const globalCanvasTextProperties = {
     "60px 'Yatra One'",
   ],
 
-  fontWeight: ["400", "500", "600", "700", "800", "900"],
+  // fontWeight: ["400", "500", "600", "700", "800", "900"],
   fontStyle: ["normal", "italic"],
   fontSize: [50, 100, 150, 200, 250, 300, 350, 400],
   color: ["#FFFFFF", "#000000", "#FFD700", "#00FFFF", "#FF6B6B", "#A0E7E5", "#FF3CAC", "#7DFFB3", "#FFA62B", "#845EC2"],
-  strokeColor: ["#000000", "#FFFFFF", "transparent", "#111111"],
-  strokeWidth: [0, 1, 2, 3, 4],
-  shadowColor: ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.5)", "rgba(255,255,255,0.4)", "transparent"],
-  shadowBlur: [0, 4, 8, 12, 20],
-  shadowOffsetX: [-4, -2, 0, 2, 4],
-  shadowOffsetY: [-4, -2, 0, 2, 4],
+  strokeColor: ["#000000", "#FFFFFF", "transparent", "#111111", "#FF0000", "#00FF00", "#0000FF", "#FFD700"],
+  strokeWidth: [0, 1, 2, 3, 4, 5, 6],
+  shadowColor: ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.5)", "rgba(255,255,255,0.4)", "rgba(0,0,0,0.2)", "rgba(255,0,0,0.4)", "rgba(0,255,255,0.3)", "transparent"],
+  shadowBlur: [0, 2, 4, 8, 12, 16, 20, 24],
+  shadowOffsetX: [-10, -8, -4, 0, 4, 8, 10, 12],
+  shadowOffsetY: [-10, -8, -4, 0, 4, 8, 10, 12],
   backgroundColor: ["rgba(0,0,0,0.6)", "rgba(20,20,20,0.7)", "rgba(255,255,255,0.15)", "transparent", "rgba(255,0,100,0.3)"],
   textAlign: ["left", "center", "right"],
   rotation: [-10, -5, 0, 5, 10],
@@ -164,6 +164,7 @@ export function applyTextStyles(ctx, styles) {
   ctx.shadowOffsetX = styles.shadowOffsetX || 0;
   ctx.shadowOffsetY = styles.shadowOffsetY || 0;
   ctx.textAlign = styles.textAlign || "left";
+  
 }
 
 export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomingStyles = {}) {
@@ -192,7 +193,7 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
   let layout = null;
   let count = null;
   const fh = document.getElementsByName("fontSize")[0].value;
-  const ms = 200;
+  const ms = document.getElementsByName("min_textSize")[0].value;
 
   function per_ms_render(timestamp) {
     if (!prev_timestamp) prev_timestamp = timestamp;
@@ -201,9 +202,12 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
     if (!ctx) return null;
     const localProgress = Math.min(deltaTime / renderDuration, 1); // (deltaTime = timepassed) * totalTime  = localProgress b/w[0,1]
     const visibleCharsIndex = Math.min(Math.floor(sentence.length * localProgress), sentence.length - 1);
+    
+    
     // let x = canvasWidth / 2.5 + (visibleCharsIndex % 2 === 0 ? 1 : -1 * deltaTime) / 4;
-
     // let y = (((2.3 / 4) * canvasHeight) / char_per_line) * (visibleCharsIndex % char_per_line) + 200;
+    
+    
     if (visibleCharsIndex % char_per_line === 0 && visibleCharsIndex !== lastStyledIndex) {
       lastStyledIndex = visibleCharsIndex;
       per_line_chaching.clear();
@@ -237,7 +241,7 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     if (char_per_line) {
-      console.log(layout ? "yes we have layout" : "fuck layout not ");
+      console.log(layout ? "" : "fuck layout not ");
       drawTextInBox(textToDraw, ctx, textBox, fh, styles);
     }
 
