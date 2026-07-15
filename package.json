@@ -1,0 +1,27 @@
+{
+  "name": "trial",
+  "version": "1.0.0",
+  "description": "https://github.com/user-attachments/assets/1d52c517-3a4e-4a40-8946-28a14e7fc3b8",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrnishant1/typography_video_editor.git"
+  },
+  "keywords": [],
+  "author": "Nishant",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrnishant1/typography_video_editor/issues"
+  },
+  "homepage": "https://github.com/mrnishant1/typography_video_editor#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.4"
+  }
+}

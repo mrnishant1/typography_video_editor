@@ -1,7 +1,10 @@
-const canvas = document.getElementById("canvas");
-import { record } from "./videorecord.js";
-import { globalCanvasTextProperties, renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer.js";
-import { pickRandom } from "./wordrenderer.js";
+import "./index.css";
+import { record } from "./videorecord";
+import { renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer";
+import { pickRandom } from "./wordrenderer";
+import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
+
+const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
 
 window.subtitleStyleOptions = {
   fontFamily: "'Creepster'",
@@ -20,9 +23,9 @@ window.subtitleStyleOptions = {
   rotation: "0",
   scale: "1",
   opacity: "1",
-};
+} as SubtitleStyleOptions;
 
-const font = new FontFace("MyFont", "url('lavish.ttf')");
+const font = new FontFace("MyFont", "url('/lavish.ttf')");
 
 await font.load();
 document.fonts.add(font);
@@ -31,7 +34,7 @@ document.fonts.add(font);
 // ctx.fillText("Custom Font", 50, 100);
 
 console.log(canvas);
-let ctx = null;
+let ctx: CanvasRenderingContext2D | null = null;
 if (canvas) {
   canvas.height = 1080;
   canvas.width = 1920;
@@ -100,10 +103,10 @@ Thank you for using the site, and happy
 creating!
 `;
 
-let jsonSubtitles = srtToJson(transcript);
-const wordJsonSub = sentenceToWords(jsonSubtitles);
-let timelineFrameId = null;
-let pr_ms_FrameID = null;
+let jsonSubtitles: SubtitleEntry[] = srtToJson(transcript);
+const wordJsonSub: WordEntry[] = sentenceToWords(jsonSubtitles);
+let timelineFrameId: number | null = null;
+let pr_ms_FrameID: number | null = null;
 let stopTimelineRenderer = false;
 
 //===================Timeline HTML=================================
@@ -112,7 +115,7 @@ let audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
 
 const time_content = document.getElementById("time_content");
 
-function renderTimeline(subtitles) {
+function renderTimeline(subtitles: SubtitleEntry[]): void {
   jsonSubtitles = subtitles;
   audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
 
@@ -137,21 +140,21 @@ function renderTimeline(subtitles) {
 renderTimeline(jsonSubtitles);
 
 //===================Timeline Renderer=================================
-function timelineRenderer(jsonSubtitles, char_per_line = 1, timelineLength = audioTimeline) {
+function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number = 1, timelineLength: number = audioTimeline): void {
   const scaleFactor = 1;
-  let prev_timestamp = null;
+  let prev_timestamp: number | null = null;
   let globalTimelineProgress = 0;
 
-  const timelineProgress = document.getElementById("timeline_progress");
+  const timelineProgress = document.getElementById("timeline_progress") as HTMLElement;
 
   let current_subtitle = 0;
-  let renderedSubtitle = null;
+  let renderedSubtitle: number | null = null;
 
-  function renderer(timestamp) {
+  function renderer(timestamp: number) {
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
     globalTimelineProgress = Math.min(deltaTime / timelineLength, 1);
-    timelineProgress.style.left = `${globalTimelineProgress * time_content.offsetWidth}px`;
+    timelineProgress.style.left = `${globalTimelineProgress * (time_content as HTMLElement).offsetWidth}px`;
     const subtitle = jsonSubtitles[current_subtitle];
 
     if (subtitle && deltaTime > subtitle.end) {
@@ -163,8 +166,7 @@ function timelineRenderer(jsonSubtitles, char_per_line = 1, timelineLength = aud
 
     if (currentSubtitle && deltaTime >= currentSubtitle.start && deltaTime <= currentSubtitle.end && renderedSubtitle !== current_subtitle) {
       //start rendering
-
-      pr_ms_FrameID = renderInstanceSubtitle(currentSubtitle, char_per_line, ctx, window.subtitleStyleOptions);
+      pr_ms_FrameID = renderInstanceSubtitle(currentSubtitle as unknown as WordEntry, char_per_line, ctx, window.subtitleStyleOptions);
       renderedSubtitle = current_subtitle;
     }
 
@@ -179,13 +181,13 @@ function timelineRenderer(jsonSubtitles, char_per_line = 1, timelineLength = aud
   timelineFrameId = requestAnimationFrame(renderer);
 }
 
-function handleTranscriptUpload(event) {
-  const file = event.target.files?.[0];
+function handleTranscriptUpload(event: Event): void {
+  const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = () => {
-    transcript = reader.result;
+    transcript = reader.result as string;
     jsonSubtitles = srtToJson(transcript);
     renderTimeline(jsonSubtitles);
     stopTimeline();
@@ -198,8 +200,8 @@ function handleTranscriptUpload(event) {
   reader.readAsText(file);
 }
 
-function handleAudioUpload(event) {
-  const file = event.target.files?.[0];
+function handleAudioUpload(event: Event): void {
+  const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
   if (audioSourceUrl) {
@@ -215,13 +217,13 @@ function handleAudioUpload(event) {
 }
 
 //===================Handle Play/Stop/Restart================================
-let audioPlayer = null;
-let audioSourceUrl = null;
-let backgroundImageSrc = null;
+let audioPlayer: HTMLAudioElement | null = null;
+let audioSourceUrl: string | null = null;
+let backgroundImageSrc: string | null = null;
 
-function playAu() {
+function playAu(): void {
   if (!audioPlayer) {
-    audioPlayer = new Audio("./speech.mp3");
+    audioPlayer = new Audio("/speech.mp3");
   }
 
   audioPlayer.pause();
@@ -230,8 +232,8 @@ function playAu() {
 }
 
 //=======================Background===========================================
-function handleBackgroundUpload(event) {
-  const file = event.target.files?.[0];
+function handleBackgroundUpload(event: Event): void {
+  const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
   if (backgroundImageSrc && backgroundImageSrc.startsWith("blob:")) {
@@ -253,7 +255,7 @@ function handleBackgroundUpload(event) {
   bgImage.src = backgroundImageSrc;
 }
 //Default Image
-backgroundImageSrc = "./bg.jpeg";
+backgroundImageSrc = "/bg.jpeg";
 const bgImage = new Image();
 bgImage.onload = () => {
   if (canvas) {
@@ -263,18 +265,38 @@ bgImage.onload = () => {
   }
 };
 bgImage.onerror = () => {
-  console.error("Failed to load background image", file.name);
+  console.error("Failed to load background image", backgroundImageSrc);
 };
 bgImage.src = backgroundImageSrc;
 
-function getWordsPerRender() {
-  return parseInt(document.getElementsByName("Word_per_render")[0]?.value, 10) || 4;
+function getWordsPerRender(): number {
+  return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
 }
 let isclicked = false;
-document.getElementById("play").addEventListener("click", () => {
+
+function stopTimeline(): void {
+  stopTimelineRenderer = true;
+  if (timelineFrameId !== null) {
+    cancelAnimationFrame(timelineFrameId);
+    if (pr_ms_FrameID !== null) cancelAnimationFrame(pr_ms_FrameID);
+    timelineFrameId = null;
+    pr_ms_FrameID = null;
+  }
+}
+
+function restartTimeline(): void {
+  stopTimeline();
+  playAu();
+  timelineRenderer(jsonSubtitles, getWordsPerRender());
+  stopTimelineRenderer = false;
+}
+
+// ---- Play / Stop transport controls ----
+// Same play/restart logic as before, now driven by two explicit buttons
+// instead of one ambiguous "Play controls" div.
+document.getElementById("playButton")?.addEventListener("click", () => {
   if (!isclicked) {
     playAu();
-    // console.log(getWordsPerRender());
     timelineRenderer(jsonSubtitles, getWordsPerRender());
     isclicked = true;
   } else {
@@ -282,32 +304,23 @@ document.getElementById("play").addEventListener("click", () => {
   }
 });
 
-function stopTimeline() {
-  stopTimelineRenderer = true;
-  if (timelineFrameId !== null) {
-    cancelAnimationFrame(timelineFrameId);
-    cancelAnimationFrame(pr_ms_FrameID);
-    timelineFrameId = null;
-    pr_ms_FrameID = null;
-  }
-}
-
-function restartTimeline() {
+document.getElementById("stopButton")?.addEventListener("click", () => {
+  // stopTimeline() itself only ever cancelled the animation frames — it never
+  // touched audio playback. Pausing the audio here too, and resetting
+  // isclicked, is the only new behavior added: it's what makes "Stop" actually
+  // stop, and lets the next Play press start fresh instead of restarting.
   stopTimeline();
-  playAu();
-  timelineRenderer(jsonSubtitles, getWordsPerRender());
-  stopTimelineRenderer = false;
-}
+  audioPlayer?.pause();
+  isclicked = false;
+});
 
 window.restartTimelineRenderer = restartTimeline;
 document.getElementById("transcriptInput")?.addEventListener("change", handleTranscriptUpload);
 document.getElementById("audioInput")?.addEventListener("change", handleAudioUpload);
 document.getElementById("backgroundInput")?.addEventListener("change", handleBackgroundUpload);
 
-
 //==================================Record ========================================
-function recordingVideo(canvas, time) {
-  
+function recordingVideo(canvas: HTMLCanvasElement, time: number): void {
   const recording = record(canvas, time);
   // play it on another video element
   var video$ = document.createElement("video");
@@ -324,7 +337,7 @@ function recordingVideo(canvas, time) {
   });
 }
 
-document.getElementById("recordButton").addEventListener("click", (e) => {
-  restartTimeline()
-  recordingVideo(canvas,audioTimeline);
+document.getElementById("recordButton")?.addEventListener("click", (e) => {
+  restartTimeline();
+  if (canvas) recordingVideo(canvas, audioTimeline);
 });

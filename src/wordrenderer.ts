@@ -1,6 +1,7 @@
-import { drawTextInBox, Layout } from "./draw_dynamicText.js";
+import { drawTextInBox, Layout } from "./draw_dynamicText";
+import type { Box, CachedGlyph, CanvasTextProperties, SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
-export const globalCanvasTextProperties = {
+export const globalCanvasTextProperties: CanvasTextProperties = {
   English_fonts: [
     "'Akronim'",
     "'Bangers'",
@@ -74,12 +75,13 @@ export const globalCanvasTextProperties = {
   scale: [0.9, 1.0, 1.1, 1.2],
   opacity: [0.7, 0.85, 1.0],
 };
-export function pickRandom(arr) {
+
+export function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function sentenceToWords(jsonSubtitles) {
-  const wordSubtitles = [];
+export function sentenceToWords(jsonSubtitles: SubtitleEntry[]): WordEntry[] {
+  const wordSubtitles: WordEntry[] = [];
   jsonSubtitles.forEach((subtitle) => {
     const words = subtitle.text.split(" ");
     const totalChars = subtitle.text.length;
@@ -104,10 +106,10 @@ export function sentenceToWords(jsonSubtitles) {
   return wordSubtitles;
 }
 
-export function srtToJson(srtContent) {
+export function srtToJson(srtContent: string): SubtitleEntry[] {
   const lines = srtContent.trim().split("\n");
-  const subtitles = [];
-  let current = {};
+  const subtitles: Partial<SubtitleEntry>[] = [];
+  let current: Partial<SubtitleEntry> = {};
 
   for (let line of lines) {
     line = line.trim();
@@ -124,8 +126,10 @@ export function srtToJson(srtContent) {
       current.id = parseInt(line);
     } else if (line.includes("-->")) {
       const [start, end] = line.split("-->").map((t) => t.trim());
-      current.start = start;
-      current.end = end;
+      // start/end are stored as raw timestamp strings here and converted
+      // to ms below — same two-pass approach as the original.
+      (current as any).start = start;
+      (current as any).end = end;
     } else {
       if (!current.text) {
         current.text = "";
@@ -138,13 +142,14 @@ export function srtToJson(srtContent) {
     subtitles.push(current);
   }
   subtitles.forEach((subtitle) => {
-    subtitle.start = timestampToMs(subtitle.start);
-    subtitle.end = timestampToMs(subtitle.end);
+    subtitle.start = timestampToMs(subtitle.start as unknown as string);
+    subtitle.end = timestampToMs(subtitle.end as unknown as string);
   });
 
-  return subtitles;
+  return subtitles as SubtitleEntry[];
 }
-function timestampToMs(timestamp) {
+
+function timestampToMs(timestamp: string): number {
   const [hms, millis] = timestamp.split(",");
   const [hours, minutes, seconds] = hms.split(":").map(Number);
 
@@ -152,7 +157,7 @@ function timestampToMs(timestamp) {
   return out;
 }
 
-export function applyTextStyles(ctx, styles) {
+export function applyTextStyles(ctx: CanvasRenderingContext2D | null, styles: Partial<SubtitleStyleOptions>): void {
   if (!ctx) return;
   ctx.save();
   ctx.font = styles.font || "";
@@ -164,20 +169,24 @@ export function applyTextStyles(ctx, styles) {
   ctx.shadowOffsetX = styles.shadowOffsetX || 0;
   ctx.shadowOffsetY = styles.shadowOffsetY || 0;
   ctx.textAlign = styles.textAlign || "left";
-  
 }
 
-export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomingStyles = {}) {
+export function renderInstanceSubtitle(
+  jsonSubtitles: WordEntry,
+  char_per_line: number,
+  ctx: CanvasRenderingContext2D | null,
+  incomingStyles: Partial<SubtitleStyleOptions> = {}
+): number | null {
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
   const renderDuration = i.end - i.start;
-  let prev_timestamp = null;
+  let prev_timestamp: number | null = null;
   let lastStyledIndex = -1;
   const canvasWidth = ctx?.canvas?.width || 1920;
   const canvasHeight = ctx?.canvas?.height || 1080;
-  const per_line_chaching = new Map(); //used for chaching char per line
-  let pr_ms_FrameID = null;
-  let styles = {
+  const per_line_chaching = new Map<number, CachedGlyph>(); //used for chaching char per line
+  let pr_ms_FrameID: number | null = null;
+  let styles: Partial<SubtitleStyleOptions> = {
     font: incomingStyles.font || `${incomingStyles.fontSize || 200}px ${incomingStyles.fontFamily || pickRandom(globalCanvasTextProperties.English_fonts)}`,
     fillStyle: incomingStyles.fillStyle || "#4800ff",
     strokeStyle: incomingStyles.strokeStyle || "#000000",
@@ -188,32 +197,24 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
     shadowOffsetY: incomingStyles.shadowOffsetY || 10,
     textAlign: incomingStyles.textAlign || "left",
   };
-  let lastPushedIndex = -1;
-  let bigWordIndex = -1;
-  let layout = null;
-  let count = null;
-  const fh = document.getElementsByName("fontSize")[0].value;
-  const ms = document.getElementsByName("min_textSize")[0].value;
+  let layout: Layout | null = null;
+  let count: number | null = null;
+  const fh = (document.getElementsByName("fontSize")[0] as HTMLSelectElement).value;
+  const ms = (document.getElementsByName("min_textSize")[0] as HTMLSelectElement).value;
 
-  function per_ms_render(timestamp) {
+  function per_ms_render(timestamp: number) {
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
 
     if (!ctx) return null;
     const localProgress = Math.min(deltaTime / renderDuration, 1); // (deltaTime = timepassed) * totalTime  = localProgress b/w[0,1]
     const visibleCharsIndex = Math.min(Math.floor(sentence.length * localProgress), sentence.length - 1);
-    
-    
-    // let x = canvasWidth / 2.5 + (visibleCharsIndex % 2 === 0 ? 1 : -1 * deltaTime) / 4;
-    // let y = (((2.3 / 4) * canvasHeight) / char_per_line) * (visibleCharsIndex % char_per_line) + 200;
-    
-    
+
     if (visibleCharsIndex % char_per_line === 0 && visibleCharsIndex !== lastStyledIndex) {
       lastStyledIndex = visibleCharsIndex;
       per_line_chaching.clear();
 
       //Making parent Box Layout for next text batch
-      const canvasRect = ctx.canvas?.getBoundingClientRect ? ctx.canvas.getBoundingClientRect() : { left: 0, top: 0 };
       layout = new Layout({
         x: 300,
         y: 300,
@@ -221,7 +222,7 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
         height: canvasHeight * 0.8,
       });
 
-      count = layout.fill_parentBox(fh, ms);
+      count = layout.fill_parentBox(Number(fh), Number(ms));
 
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       styles = {
@@ -237,7 +238,7 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
 
     // //Render all chached queue----------------------
     const textToDraw = sentence[Math.floor(visibleCharsIndex)];
-    const textBox = layout.boxes[Math.min(visibleCharsIndex, count)];
+    const textBox: Box = (layout as Layout).boxes[Math.min(visibleCharsIndex%char_per_line, count as number)];
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     if (char_per_line) {
@@ -257,15 +258,15 @@ export function renderInstanceSubtitle(jsonSubtitles, char_per_line, ctx, incomi
       text: sentence[Math.floor(visibleCharsIndex)],
       posx: textBox.x,
       posy: textBox.y,
-      font: styles.font,
-      fillStyle: styles.fillStyle,
-      strokeStyle: styles.strokeStyle,
-      lineWidth: styles.lineWidth,
-      shadowBlur: styles.shadowBlur,
-      shadowColor: styles.shadowColor,
-      shadowOffsetX: styles.shadowOffsetX,
-      shadowOffsetY: styles.shadowOffsetY,
-      textAlign: styles.textAlign,
+      font: styles.font as string,
+      fillStyle: styles.fillStyle as string,
+      strokeStyle: styles.strokeStyle as string,
+      lineWidth: styles.lineWidth as number,
+      shadowBlur: styles.shadowBlur as number,
+      shadowColor: styles.shadowColor as string,
+      shadowOffsetX: styles.shadowOffsetX as number,
+      shadowOffsetY: styles.shadowOffsetY as number,
+      textAlign: styles.textAlign as CanvasTextAlign,
       fontFamily: incomingStyles.fontFamily,
       box: textBox,
       fh: fh,

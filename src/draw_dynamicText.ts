@@ -3,10 +3,15 @@
 // Every placement removes one free rect, places a box in its top-left corner,
 // then splits the leftover into up to two new free rects (guillotine cut).
 
-import { applyTextStyles, globalCanvasTextProperties } from "./wordrenderer.js";
+import { applyTextStyles } from "./wordrenderer";
+import type { Box, Rect, SubtitleStyleOptions } from "./types";
 
 export class Layout {
-  constructor(parentRect) {
+  parent: Rect;
+  freeRects: Rect[];
+  boxes: Box[];
+
+  constructor(parentRect: Rect) {
     // parentRect: {x, y, width, height}  (x,y = top-left)
     this.parent = parentRect;
     this.freeRects = [{ ...parentRect }];
@@ -14,7 +19,7 @@ export class Layout {
   }
 
   // Pick the largest-area usable free rect to place into.
-  _pickFreeRectIndex(minSize) {
+  _pickFreeRectIndex(minSize: number): number {
     let bestIdx = -1;
     let bestArea = -1;
     for (let i = 0; i < this.freeRects.length; i++) {
@@ -29,15 +34,15 @@ export class Layout {
     return bestIdx;
   }
 
-  placeBox(fontHeight, minSize) {
+  placeBox(fontHeight: number, minSize: number): Box | null {
     const idx = this._pickFreeRectIndex(minSize);
     if (idx === -1) return null;
 
     const rect = this.freeRects.splice(idx, 1)[0];
 
     // const orientation = Math.random() < 0.7 ? 0 : 90;
-    const orientation = 0;
-    let width, height;
+    const orientation: 0 | 90 = 0;
+    let width: number, height: number;
 
     if (orientation === 0) {
       // "horizontal text": height capped by font size, width varies
@@ -49,7 +54,7 @@ export class Layout {
       height = Math.min(rect.height, Math.max(minSize, Math.random() * rect.height));
     }
 
-    const box = {
+    const box: Box = {
       x: rect.x,
       y: rect.y,
       width,
@@ -63,13 +68,13 @@ export class Layout {
     // Guillotine split of the leftover space into up to two rectangles:
     // 1) a strip to the right of the box, spanning the full height of the original free rect
     // 2) a strip below the box, spanning only the box's width
-    const rightRect = {
+    const rightRect: Rect = {
       x: rect.x + width,
       y: rect.y,
       width: rect.width - width,
       height: rect.height,
     };
-    const bottomRect = {
+    const bottomRect: Rect = {
       x: rect.x,
       y: rect.y + height,
       width: width,
@@ -82,7 +87,7 @@ export class Layout {
     return box;
   }
 
-  fill_parentBox(fontHeight, minSize, maxBoxes = 2000) {
+  fill_parentBox(fontHeight: number, minSize: number, maxBoxes = 2000): number {
     let count = 0;
     while (count < maxBoxes) {
       const box = this.placeBox(fontHeight, minSize);
@@ -97,7 +102,7 @@ export class Layout {
 
 // Binary-search the largest font size (up to maxHeight) whose rendered text
 // width still fits within maxWidth. Returns 0 if even size 1 doesn't fit.
-function fitFontSize(ctx, text, maxWidth, maxHeight) {
+function fitFontSize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxHeight: number): number {
   let lo = 1;
   let hi = Math.floor(maxHeight);
   if (hi < 1) return 0;
@@ -117,8 +122,13 @@ function fitFontSize(ctx, text, maxWidth, maxHeight) {
   return best;
 }
 
-export function drawTextInBox(text, ctx, box, fontHeight, styles = window.subtitleStyleOptions || {}) {
-  // const text = SAMPLE_WORDS[Math.floor(Math.random() * SAMPLE_WORDS.length)];
+export function drawTextInBox(
+  text: string,
+  ctx: CanvasRenderingContext2D | null,
+  box: Box | null,
+  fontHeight: string | number,
+  styles: Partial<SubtitleStyleOptions> = window.subtitleStyleOptions || {}
+): void {
   const padding = 0;
   if (!text || !ctx || !box || !fontHeight) {
     console.log("mising prop", text, ctx, box, fontHeight);
@@ -129,7 +139,7 @@ export function drawTextInBox(text, ctx, box, fontHeight, styles = window.subtit
   // For orientation 90, text runs along box.height (post-rotation) and is
   // capped by box.width. Either way, font size never exceeds fontHeight.
   const availableLength = box.orientation === 0 ? box.width - padding : box.height - padding;
-  const availableThickness = Math.min(fontHeight, box.orientation === 0 ? box.height : box.width) - padding;
+  const availableThickness = Math.min(Number(fontHeight), box.orientation === 0 ? box.height : box.width) - padding;
 
   const fontSize = fitFontSize(ctx, text, availableLength, availableThickness);
 
@@ -139,10 +149,6 @@ export function drawTextInBox(text, ctx, box, fontHeight, styles = window.subtit
   // Calling strokeText outside this function would use a different baseline/font.
   applyTextStyles(ctx, styles);
   let fontFamily = styles.fontFamily || styles.font?.replace(/^[\d.]+px\s+/, "") || "sans-serif";
-  // if (styles.fontFamily == "__random__") {
-  //   console.log("random");
-  //   fontFamily = globalCanvasTextProperties.English_fonts[Math.floor(Math.random() * globalCanvasTextProperties.English_fonts.length)];
-  // }
   ctx.font = `${fontSize}px ${fontFamily}`;
 
   if (box.orientation === 0) {
