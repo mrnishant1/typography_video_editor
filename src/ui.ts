@@ -59,6 +59,7 @@ type SelectValues = Array<string | number | { text?: string; value?: string | nu
 function addSelect(name: string, values: SelectValues, title: string = labels[name] || name): void {
   const label = document.createElement("label");
   const labelText = document.createElement("span");
+  
   labelText.className = "control-label";
   labelText.textContent = title;
   label.append(labelText);
@@ -72,6 +73,7 @@ function addSelect(name: string, values: SelectValues, title: string = labels[na
     help.dataset.tooltip = "Text size is randomized between the selected minimum and maximum text Size.";
     labelText.append(" ", help);
   }
+  
 
   const select = document.createElement("select");
   select.name = name;
@@ -90,11 +92,16 @@ function addSelect(name: string, values: SelectValues, title: string = labels[na
   normalized.forEach((item) => {
     const value = typeof item === "object" ? item.value ?? String(item) : item;
     const text = typeof item === "object" ? item.text ?? String(item) : item;
-    select.add(new Option(String(text), String(value), false, String(value) === String(getCurrentValue(name))));
+    const option = new Option(String(text), String(value), false, String(value) === String(getCurrentValue(name)));
+    if (name === "font") {
+      option.style.fontFamily = String(value);
+    }
+    select.add(option);
   });
   if (name === "Word_per_render") select.value = "4";
-  if (name === "min_textSize") select.value = "200";
-  if (name === "fontSize") select.value = "300";
+  if (name === "min_textSize") select.value = "100";
+  if (name === "fontSize") select.value = "200";
+ 
 
   //Assigning background color
   select.childNodes.forEach((childNode) => {
@@ -108,8 +115,8 @@ function addSelect(name: string, values: SelectValues, title: string = labels[na
 if (panel) {
   const fontChoices = [{ text: "Random fonts", value: "__random__" }, ...properties.English_fonts, ...properties.Hindi_fonts.map((font) => font.replace(/^\d+px\s+/, ""))];
   addSelect("Word_per_render", [1, 2, 3, 4, 5, 6, 7, 8], "Word per render");
-  addSelect("min_textSize", [100, 150, 200, 250, 300, 400, 450], "Min text size (minimum)");
   addSelect("font", fontChoices, "Font");
+  addSelect("min_textSize", [10,20,30,40, 50, 70, 100, 150, 200, 250, 300, 400, 450], "Min text size (minimum)");
   (Object.entries(properties) as [string, string[] | number[]][])
     .filter(([name]) => name !== "English_fonts" && name !== "Hindi_fonts")
     .forEach(([name, values]) => addSelect(name, values, name === "fontSize" ? "Max text Size (Maximum" : name));

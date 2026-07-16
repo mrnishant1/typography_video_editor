@@ -44,6 +44,37 @@
         <div id="canvas-row">
             <aside id="style-panel" aria-label="Subtitle styles"></aside>
 
+            <div class="canvas-config" id="canvas-config-section">
+                <h3>Canvas Settings</h3>
+                <label>
+                    <span>Orientation</span>
+                    <select id="canvasOrientation">
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="9:16">9:16 (Portrait)</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Resolution</span>
+                    <select id="canvasResolution">
+                        <option value="1080">1080p (1920×1080)</option>
+                        <option value="1440">1440p (2560×1440)</option>
+                        <option value="2160">2160p 4K (3840×2160)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </label>
+                <div id="customDimensionsInput" style="display: none;">
+                    <label>
+                        <span>Width</span>
+                        <input type="number" id="canvasWidth" min="400" value="1920" />
+                    </label>
+                    <label>
+                        <span>Height</span>
+                        <input type="number" id="canvasHeight" min="400" value="1080" />
+                    </label>
+                </div>
+                <button id="applyCanvasSettings" class="btn btn-apply">Apply Settings</button>
+            </div>
+
             <div class="canvas-stage">
                 <canvas id="canvas"></canvas>
             </div>

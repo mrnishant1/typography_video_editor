@@ -6,6 +6,21 @@ import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
 
+// Canvas configuration storage
+export interface CanvasConfig {
+  width: number;
+  height: number;
+  orientation: "16:9" | "9:16";
+  resolution: "1080" | "1440" | "2160" | "custom";
+}
+
+export const canvasConfig: CanvasConfig = {
+  width: 800,
+  height: 450,
+  orientation: "16:9",
+  resolution: "1080",
+};
+
 window.subtitleStyleOptions = {
   fontFamily: "'Creepster'",
   fontSize: "200",
@@ -30,15 +45,86 @@ const font = new FontFace("MyFont", "url('/lavish.ttf')");
 await font.load();
 document.fonts.add(font);
 
-// ctx.font = "40px MyFont";
-// ctx.fillText("Custom Font", 50, 100);
+// Canvas dimension calculator based on orientation and resolution
+function calculateCanvasDimensions(orientation: "16:9" | "9:16", resolution: "1080" | "1440" | "2160"): { width: number; height: number } {
+  const resolutions = {
+    "1080": {
+      "16:9": { width: 800, height: 450 },
+      "9:16": { width: 450, height: 800 },
+    },
+    "1440": {
+      "16:9": { width: 800, height: 450 },
+      "9:16": { width: 450, height: 800 },
+    },
+    "2160": {
+      "16:9": { width: 800, height: 450 },
+      "9:16": { width: 450, height: 800 },
+    },
+  };
+  return resolutions[resolution][orientation];
+}
+
+// Apply canvas settings to DOM
+function applyCanvasSettings(config: CanvasConfig): void {
+  if (canvas) {
+    canvas.style.height = `${config.height}px`;
+    canvas.style.width = `${config.width}px`;
+    canvas.height = config.height;
+    canvas.width = config.width;
+    ctx = canvas.getContext("2d");
+  }
+}
 
 console.log(canvas);
 let ctx: CanvasRenderingContext2D | null = null;
-if (canvas) {
-  canvas.height = 1080;
-  canvas.width = 1920;
-  ctx = canvas.getContext("2d");
+
+// Initial canvas setup
+applyCanvasSettings(canvasConfig);
+
+// Canvas configuration UI handlers
+const orientationSelect = document.getElementById("canvasOrientation") as HTMLSelectElement;
+const resolutionSelect = document.getElementById("canvasResolution") as HTMLSelectElement;
+const customDimensionsInput = document.getElementById("customDimensionsInput") as HTMLElement;
+const canvasWidthInput = document.getElementById("canvasWidth") as HTMLInputElement;
+const canvasHeightInput = document.getElementById("canvasHeight") as HTMLInputElement;
+const applyButton = document.getElementById("applyCanvasSettings") as HTMLButtonElement;
+
+// Show custom dimensions input when custom resolution is selected
+if (resolutionSelect) {
+  resolutionSelect.addEventListener("change", (e) => {
+    const value = (e.target as HTMLSelectElement).value;
+    if (customDimensionsInput) {
+      customDimensionsInput.style.display = value === "custom" ? "flex" : "none";
+    }
+  });
+}
+
+// Apply canvas settings when button is clicked
+if (applyButton) {
+  applyButton.addEventListener("click", () => {
+    const orientation = (orientationSelect?.value || "16:9") as "16:9" | "9:16";
+    const resolution = (resolutionSelect?.value || "1080") as "1080" | "1440" | "2160" | "custom";
+
+    if (resolution === "custom") {
+      const width = parseInt(canvasWidthInput?.value || "1920", 10);
+      const height = parseInt(canvasHeightInput?.value || "1080", 10);
+      if (width > 0 && height > 0) {
+        canvasConfig.width = width;
+        canvasConfig.height = height;
+        canvasConfig.resolution = "custom";
+        canvasConfig.orientation = orientation;
+      }
+    } else {
+      const dimensions = calculateCanvasDimensions(orientation, resolution as "1080" | "1440" | "2160");
+      canvasConfig.width = dimensions.width;
+      canvasConfig.height = dimensions.height;
+      canvasConfig.resolution = resolution as "1080" | "1440" | "2160";
+      canvasConfig.orientation = orientation;
+    }
+
+    applyCanvasSettings(canvasConfig);
+    console.log("Canvas settings applied:", canvasConfig);
+  });
 }
 //=======================Load Transcript============================
 

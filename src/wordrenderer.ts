@@ -2,6 +2,7 @@ import { drawTextInBox, Layout } from "./draw_dynamicText";
 import type { Box, CachedGlyph, CanvasTextProperties, SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
 export const globalCanvasTextProperties: CanvasTextProperties = {
+  fontSize: [10,20,30,40,50, 100, 150, 200, 250, 300, 350, 400],
   English_fonts: [
     "'Akronim'",
     "'Bangers'",
@@ -61,7 +62,7 @@ export const globalCanvasTextProperties: CanvasTextProperties = {
 
   // fontWeight: ["400", "500", "600", "700", "800", "900"],
   fontStyle: ["normal", "italic"],
-  fontSize: [50, 100, 150, 200, 250, 300, 350, 400],
+  
   color: ["#FFFFFF", "#000000", "#FFD700", "#00FFFF", "#FF6B6B", "#A0E7E5", "#FF3CAC", "#7DFFB3", "#FFA62B", "#845EC2"],
   strokeColor: ["#000000", "#FFFFFF", "transparent", "#111111", "#FF0000", "#00FF00", "#0000FF", "#FFD700"],
   strokeWidth: [0, 1, 2, 3, 4, 5, 6],
@@ -157,6 +158,15 @@ function timestampToMs(timestamp: string): number {
   return out;
 }
 
+function getCanvasDims(): { fh: number; ms: number; canvasWidth: number; canvasHeight: number } {
+  const fh = Number((document.getElementsByName("fontSize")[0] as HTMLSelectElement).value);
+  const ms = Number((document.getElementsByName("min_textSize")[0] as HTMLSelectElement).value);
+  // Get actual canvas dimensions instead of hardcoded values
+  const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  const canvasWidth = canvas?.width || 1920;
+  const canvasHeight = canvas?.height || 1080;
+  return { fh, ms, canvasWidth, canvasHeight };
+}
 export function applyTextStyles(ctx: CanvasRenderingContext2D | null, styles: Partial<SubtitleStyleOptions>): void {
   if (!ctx) return;
   ctx.save();
@@ -171,19 +181,14 @@ export function applyTextStyles(ctx: CanvasRenderingContext2D | null, styles: Pa
   ctx.textAlign = styles.textAlign || "left";
 }
 
-export function renderInstanceSubtitle(
-  jsonSubtitles: WordEntry,
-  char_per_line: number,
-  ctx: CanvasRenderingContext2D | null,
-  incomingStyles: Partial<SubtitleStyleOptions> = {}
-): number | null {
+
+export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: number, ctx: CanvasRenderingContext2D | null, incomingStyles: Partial<SubtitleStyleOptions> = {}): number | null {
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
   const renderDuration = i.end - i.start;
   let prev_timestamp: number | null = null;
   let lastStyledIndex = -1;
-  const canvasWidth = ctx?.canvas?.width || 1920;
-  const canvasHeight = ctx?.canvas?.height || 1080;
+  const { fh, ms, canvasWidth, canvasHeight } = getCanvasDims();
   const per_line_chaching = new Map<number, CachedGlyph>(); //used for chaching char per line
   let pr_ms_FrameID: number | null = null;
   let styles: Partial<SubtitleStyleOptions> = {
@@ -199,8 +204,6 @@ export function renderInstanceSubtitle(
   };
   let layout: Layout | null = null;
   let count: number | null = null;
-  const fh = (document.getElementsByName("fontSize")[0] as HTMLSelectElement).value;
-  const ms = (document.getElementsByName("min_textSize")[0] as HTMLSelectElement).value;
 
   function per_ms_render(timestamp: number) {
     if (!prev_timestamp) prev_timestamp = timestamp;
@@ -216,12 +219,12 @@ export function renderInstanceSubtitle(
 
       //Making parent Box Layout for next text batch
       layout = new Layout({
-        x: 300,
-        y: 300,
+        x: canvasWidth * 0.1,
+        y: canvasWidth * 0.1,
         width: canvasWidth * 0.8,
         height: canvasHeight * 0.8,
       });
-
+      
       count = layout.fill_parentBox(Number(fh), Number(ms));
 
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -238,10 +241,19 @@ export function renderInstanceSubtitle(
 
     // //Render all chached queue----------------------
     const textToDraw = sentence[Math.floor(visibleCharsIndex)];
-    const textBox: Box = (layout as Layout).boxes[Math.min(visibleCharsIndex%char_per_line, count as number)];
+    const textBox: Box = (layout as Layout).boxes[Math.min(visibleCharsIndex % char_per_line, count as number)];
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     if (char_per_line) {
+      //==================Debugging Boundaries=====================================================
+      
+      // ctx.beginPath();
+      // ctx.strokeStyle = "rgb(68, 0, 255)";
+      // ctx.strokeRect(layout!.parent.x, layout!.parent.y, layout!.parent.width, layout!.parent.height);
+      // ctx.stroke();
+      // ctx.strokeStyle = "rgb(0, 0, 0)";
+      // ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
+      
       console.log(layout ? "" : "fuck layout not ");
       drawTextInBox(textToDraw, ctx, textBox, fh, styles);
     }

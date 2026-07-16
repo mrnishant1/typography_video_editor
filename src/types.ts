@@ -82,7 +82,7 @@ export interface CachedGlyph {
   textAlign: CanvasTextAlign;
   fontFamily?: string;
   box: Box;
-  fh: string;
+  fh: number;
 }
 
 // The original code hangs a couple of values off `window` so multiple
