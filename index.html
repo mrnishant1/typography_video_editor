@@ -4,20 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subtitle Generator | Typography Video Generator</title>
+    <title>Typography Subtitle Video Editor Pro</title>
     <meta name="description" content="Create stunning subtitle videos with dynamic typography, AI-friendly transcript support, and background styling. Generate subtitle visuals, audio sync, and creative typography videos instantly.">
     <meta name="keywords" content="subtitle generator, typography video generator, AI subtitle maker, video caption creator, SRT subtitle editor, subtitle animation, transcript to subtitles, text overlay video, creative typography, video caption styling">
     <meta name="author" content="Nishant Kumar">
     <meta name="robots" content="index, follow">
-    <meta property="og:title" content="Subtitle Generator | Typography Video Generator">
-    <meta property="og:description" content="Create stunning subtitle videos with dynamic typography, AI-friendly transcript support, and background styling. Generate subtitle visuals, audio sync, and creative typography videos instantly.">
+    <meta property="og:title" content="Typography Subtitle Video Editor Pro">
+    <meta property="og:description" content="Create stunning subtitle videos with dynamic typography, AI-friendly transcript support, and background styling.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourdomain.com">
-    <meta property="og:image" content="https://yourdomain.com/preview.png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Subtitle Generator | Typography Video Generator">
-    <meta name="twitter:description" content="Create stunning subtitle videos with dynamic typography, AI-friendly transcript support, and background styling. Generate subtitle visuals, audio sync, and creative typography videos instantly.">
-
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -26,98 +21,246 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Anek+Devanagari&family=Amita:wght@400;700&family=Arya:wght@400;700&family=Baloo+2:wght@400..800&family=Cambay:wght@400;700&family=Dekko&family=Eczar:wght@400..800&family=Glegoo:wght@400;700&family=Gotu&family=Hind:wght@300;400;500;600;700&family=Kalam:wght@300;400;700&family=Karma:wght@300;400;500;600;700&family=Khand:wght@300;400;500;600;700&family=Kurale&family=Laila:wght@300;400;500;600;700&family=Martel:wght@200;300;400;600;700;800;900&family=Martel+Sans:wght@200;300;400;600;700;800;900&family=Modak&family=Mukta:wght@200;300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@100..900&family=Palanquin:wght@100;200;300;400;500;600;700&family=Rajdhani:wght@300;400;500;600;700&family=Ranga:wght@400;700&family=Rozha+One&family=Sarala:wght@400;700&family=Sarpanch:wght@400;500;600;700;800;900&family=Teko:wght@300;400;500;600;700&family=Tillana:wght@400;500;600;700;800&family=Tiro+Devanagari+Hindi&family=Yatra+One&display=swap"
         rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div id="app">
+        <!-- HEADER / TOPBAR -->
         <header class="topbar">
-            <div class="brand">🎬 Typography Video Editor</div>
+            <div class="brand">
+                <span class="logo-icon">🎬</span>
+                <span class="logo-text">Typography <span class="logo-gradient">Video Editor</span></span>
+                <span class="badge">PRO</span>
+            </div>
             <nav class="topbar-links">
-                <a href="https://turboscribe.ai/dashboard" target="_blank" rel="noopener">Generate Audio → Subtitle</a>
-                <a href="https://www.linkedin.com/in/nishant-kumar-692477226/" target="_blank" rel="noopener"
-                    aria-label="Nishant Kumar on LinkedIn">👷‍♂️</a>
+                <a class="action-btn" href="https://turboscribe.ai/dashboard" target="_blank" rel="noopener">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Generate Transcripts
+                </a>
+                <a class="dev-link" href="https://www.linkedin.com/in/nishant-kumar-692477226/" target="_blank" rel="noopener" aria-label="Nishant Kumar on LinkedIn">
+                    <span class="avatar">👨‍💻</span>
+                    <span class="dev-name">Nishant Kumar</span>
+                </a>
             </nav>
         </header>
 
-        <div id="canvas-row">
-            <aside id="style-panel" aria-label="Subtitle styles"></aside>
-
-            <div class="canvas-config" id="canvas-config-section">
-                <h3>Canvas Settings</h3>
-                <label>
-                    <span>Orientation</span>
-                    <select id="canvasOrientation">
-                        <option value="16:9">16:9 (Landscape)</option>
-                        <option value="9:16">9:16 (Portrait)</option>
-                    </select>
-                </label>
-                <label>
-                    <span>Resolution</span>
-                    <select id="canvasResolution">
-                        <option value="1080">1080p (1920×1080)</option>
-                        <option value="1440">1440p (2560×1440)</option>
-                        <option value="2160">2160p 4K (3840×2160)</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </label>
-                <div id="customDimensionsInput" style="display: none;">
-                    <label>
-                        <span>Width</span>
-                        <input type="number" id="canvasWidth" min="400" value="1920" />
-                    </label>
-                    <label>
-                        <span>Height</span>
-                        <input type="number" id="canvasHeight" min="400" value="1080" />
-                    </label>
+        <!-- MAIN GRID WORKSPACE -->
+        <div id="workspace-grid">
+            <!-- SIDEBAR CONTROLS -->
+            <aside id="sidebar-controls" aria-label="Editor controls">
+                <!-- Section 1: Canvas Settings -->
+                <div class="panel-section canvas-settings-card">
+                    <div class="panel-header">
+                        <svg class="panel-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="15" y1="3" x2="15" y2="21"></line>
+                        </svg>
+                        <h3>Canvas Settings</h3>
+                    </div>
+                    <div class="panel-body">
+                        <label>
+                            <span class="control-label">Orientation</span>
+                            <select id="canvasOrientation">
+                                <option value="16:9">16:9 (Landscape)</option>
+                                <option value="9:16">9:16 (Portrait)</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span class="control-label">Resolution</span>
+                            <select id="canvasResolution">
+                                <option value="1080">1080p (1920×1080)</option>
+                                <option value="1440">1440p (2560×1440)</option>
+                                <option value="2160">2160p 4K (3840×2160)</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </label>
+                        <div id="customDimensionsInput" style="display: none;">
+                            <div class="custom-dims-row">
+                                <label>
+                                    <span class="control-label">Width</span>
+                                    <input type="number" id="canvasWidth" min="400" value="1920" />
+                                </label>
+                                <label>
+                                    <span class="control-label">Height</span>
+                                    <input type="number" id="canvasHeight" min="400" value="1080" />
+                                </label>
+                            </div>
+                        </div>
+                        <button id="applyCanvasSettings" class="btn btn-apply">
+                            <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Apply Settings
+                        </button>
+                    </div>
                 </div>
-                <button id="applyCanvasSettings" class="btn btn-apply">Apply Settings</button>
-            </div>
 
-            <div class="canvas-stage">
-                <canvas id="canvas"></canvas>
-            </div>
+                <!-- Section 2: Subtitle Styles Panel (filled dynamically by ui.ts) -->
+                <div class="panel-section subtitle-style-card">
+                    <div class="panel-header">
+                        <svg class="panel-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        <h3>Style Parameters</h3>
+                    </div>
+                    <div id="style-panel" aria-label="Subtitle styles">
+                        <!-- Select inputs will be dynamically appended here by ui.ts -->
+                    </div>
+                </div>
+            </aside>
 
-            <div class="side-actions">
-                <button id="recordButton" class="btn btn-record">● Record</button>
-                <p class="hint-text">Records (just the font text) — still a work in progress.</p>
-            </div>
+            <!-- PREVIEW MONITOR & PLAYBACK BAR -->
+            <main id="preview-area" aria-label="Video Monitor">
+                <div class="canvas-stage">
+                    <div class="stage-overlay">Preview Monitor</div>
+                    <canvas id="canvas"></canvas>
+                </div>
+                
+                <!-- Playback controls toolbar -->
+                <div class="media-toolbar">
+                    <div class="toolbar-left">
+                        <button id="playButton" class="btn btn-transport btn-play" aria-label="Play">
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Play
+                        </button>
+                        <button id="stopButton" class="btn btn-transport btn-stop" aria-label="Stop">
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                            </svg>
+                            Stop
+                        </button>
+                    </div>
+                    
+                    <div class="toolbar-center">
+                        <div class="time-display">
+                            <span id="current-time">00:00.00</span>
+                            <span class="time-divider">/</span>
+                            <span id="total-time">00:00.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="toolbar-right">
+                        <button id="recordButton" class="btn btn-record" aria-label="Record Video">
+                            <span class="record-indicator">
+                                <span class="record-pulse"></span>
+                            </span>
+                            Record Video
+                        </button>
+                    </div>
+                </div>
+                <div class="toolbar-status-bar">
+                    <span class="status-hint">💡 Recording outputs WebM file with composed text & background image synchronized to audio.</span>
+                </div>
+            </main>
         </div>
 
-        <section id="timeline" aria-label="Timeline and transport controls">
-            <div class="upload-row">
-                <label class="upload-field">
-                    <span>Transcript (.srt)</span>
+        <!-- TIMELINE & FILE DASHBOARD -->
+        <section id="timeline" aria-label="Timeline and tracks">
+            <!-- Files Upload Row -->
+            <div class="upload-dashboard">
+                <label class="upload-card" for="transcriptInput">
+                    <div class="upload-card-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <div class="upload-card-content">
+                        <span class="upload-card-title">Transcript (.srt)</span>
+                        <span class="upload-card-desc" id="srt-status">Default loaded</span>
+                    </div>
                     <input id="transcriptInput" type="file" accept=".srt" />
                 </label>
-                <label class="upload-field">
-                    <span>Audio</span>
+
+                <label class="upload-card" for="audioInput">
+                    <div class="upload-card-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div class="upload-card-content">
+                        <span class="upload-card-title">Audio Track</span>
+                        <span class="upload-card-desc" id="audio-status">Default speech.mp3 loaded</span>
+                    </div>
                     <input id="audioInput" type="file" accept="audio/*" />
                 </label>
-                <label class="upload-field">
-                    <span>Background</span>
+
+                <label class="upload-card" for="backgroundInput">
+                    <div class="upload-card-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </div>
+                    <div class="upload-card-content">
+                        <span class="upload-card-title">Background Image</span>
+                        <span class="upload-card-desc" id="bg-status">Default bg.jpeg loaded</span>
+                    </div>
                     <input id="backgroundInput" type="file" accept="image/*" />
                 </label>
             </div>
 
-            <div class="timeline-header">
-                <span class="timeline-label">Timeline</span>
-                <div class="transport-controls">
-                    <button id="playButton" class="btn btn-transport btn-play" aria-label="Play">▶ Play</button>
-                    <button id="stopButton" class="btn btn-transport btn-stop" aria-label="Stop">■ Stop</button>
+            <!-- Timeline visual representation -->
+            <div class="timeline-visualizer">
+                <div class="timeline-meta">
+                    <div class="timeline-indicator-track">
+                        <span class="timeline-indicator-dot"></span>
+                        <span class="timeline-track-title">Subtitles Track</span>
+                    </div>
+                </div>
+                <div id="time_region">
+                    <div id="time_content">
+                        <!-- Markers and clips rendered by JS -->
+                    </div>
                 </div>
             </div>
 
-            <div id="time_region">
-                <div id="time_content">
-                    <!-- your timeline markers/clips/tracks go here -->
+            <!-- Editor Stats Dashboard -->
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <span class="stat-icon">⏱️</span>
+                    <div class="stat-info">
+                        <span class="stat-label">Audio Length</span>
+                        <span class="stat-value" id="stat-duration">0.00s</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">💬</span>
+                    <div class="stat-info">
+                        <span class="stat-label">Subtitles</span>
+                        <span class="stat-value" id="stat-segments">0 clips</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🖥️</span>
+                    <div class="stat-info">
+                        <span class="stat-label">Canvas Canvas Size</span>
+                        <span class="stat-value" id="stat-resolution">1920×1080</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">✍️</span>
+                    <div class="stat-info">
+                        <span class="stat-label">Words Per Block</span>
+                        <span class="stat-value" id="stat-words">4 words</span>
+                    </div>
                 </div>
             </div>
-
-            <div class="stats-panel">Stats</div>
         </section>
     </div>
+    
     <script type="module" src="/src/index.ts"></script>
     <script type="module" src="/src/ui.ts"></script>
 </body>

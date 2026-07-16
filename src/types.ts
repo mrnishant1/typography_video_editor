@@ -92,6 +92,9 @@ declare global {
   interface Window {
     subtitleStyleOptions: SubtitleStyleOptions;
     restartTimelineRenderer?: () => void;
+    updateStatsDashboard?: () => void;
+    audioDuration?: number;
+    subtitlesCount?: number;
   }
 
   interface HTMLCanvasElement {

@@ -1,7 +1,6 @@
 import "./index.css";
 import { record } from "./videorecord";
 import { renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer";
-import { pickRandom } from "./wordrenderer";
 import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
@@ -13,13 +12,6 @@ export interface CanvasConfig {
   orientation: "16:9" | "9:16";
   resolution: "1080" | "1440" | "2160" | "custom";
 }
-
-export const canvasConfig: CanvasConfig = {
-  width: 800,
-  height: 450,
-  orientation: "16:9",
-  resolution: "1080",
-};
 
 window.subtitleStyleOptions = {
   fontFamily: "'Creepster'",
@@ -44,87 +36,12 @@ const font = new FontFace("MyFont", "url('/lavish.ttf')");
 
 await font.load();
 document.fonts.add(font);
-
-// Canvas dimension calculator based on orientation and resolution
-function calculateCanvasDimensions(orientation: "16:9" | "9:16", resolution: "1080" | "1440" | "2160"): { width: number; height: number } {
-  const resolutions = {
-    "1080": {
-      "16:9": { width: 800, height: 450 },
-      "9:16": { width: 450, height: 800 },
-    },
-    "1440": {
-      "16:9": { width: 800, height: 450 },
-      "9:16": { width: 450, height: 800 },
-    },
-    "2160": {
-      "16:9": { width: 800, height: 450 },
-      "9:16": { width: 450, height: 800 },
-    },
-  };
-  return resolutions[resolution][orientation];
-}
-
 // Apply canvas settings to DOM
-function applyCanvasSettings(config: CanvasConfig): void {
-  if (canvas) {
-    canvas.style.height = `${config.height}px`;
-    canvas.style.width = `${config.width}px`;
-    canvas.height = config.height;
-    canvas.width = config.width;
-    ctx = canvas.getContext("2d");
-  }
-}
 
 console.log(canvas);
 let ctx: CanvasRenderingContext2D | null = null;
-
-// Initial canvas setup
-applyCanvasSettings(canvasConfig);
-
-// Canvas configuration UI handlers
-const orientationSelect = document.getElementById("canvasOrientation") as HTMLSelectElement;
-const resolutionSelect = document.getElementById("canvasResolution") as HTMLSelectElement;
-const customDimensionsInput = document.getElementById("customDimensionsInput") as HTMLElement;
-const canvasWidthInput = document.getElementById("canvasWidth") as HTMLInputElement;
-const canvasHeightInput = document.getElementById("canvasHeight") as HTMLInputElement;
-const applyButton = document.getElementById("applyCanvasSettings") as HTMLButtonElement;
-
-// Show custom dimensions input when custom resolution is selected
-if (resolutionSelect) {
-  resolutionSelect.addEventListener("change", (e) => {
-    const value = (e.target as HTMLSelectElement).value;
-    if (customDimensionsInput) {
-      customDimensionsInput.style.display = value === "custom" ? "flex" : "none";
-    }
-  });
-}
-
-// Apply canvas settings when button is clicked
-if (applyButton) {
-  applyButton.addEventListener("click", () => {
-    const orientation = (orientationSelect?.value || "16:9") as "16:9" | "9:16";
-    const resolution = (resolutionSelect?.value || "1080") as "1080" | "1440" | "2160" | "custom";
-
-    if (resolution === "custom") {
-      const width = parseInt(canvasWidthInput?.value || "1920", 10);
-      const height = parseInt(canvasHeightInput?.value || "1080", 10);
-      if (width > 0 && height > 0) {
-        canvasConfig.width = width;
-        canvasConfig.height = height;
-        canvasConfig.resolution = "custom";
-        canvasConfig.orientation = orientation;
-      }
-    } else {
-      const dimensions = calculateCanvasDimensions(orientation, resolution as "1080" | "1440" | "2160");
-      canvasConfig.width = dimensions.width;
-      canvasConfig.height = dimensions.height;
-      canvasConfig.resolution = resolution as "1080" | "1440" | "2160";
-      canvasConfig.orientation = orientation;
-    }
-
-    applyCanvasSettings(canvasConfig);
-    console.log("Canvas settings applied:", canvasConfig);
-  });
+if (canvas) {
+  ctx = canvas.getContext("2d");
 }
 //=======================Load Transcript============================
 
@@ -189,6 +106,21 @@ Thank you for using the site, and happy
 creating!
 `;
 
+//===================Helper Utilities==============================
+function formatTime(ms: number): string {
+  if (isNaN(ms) || ms < 0) return "00:00.00";
+  const totalSeconds = ms / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const centiseconds = Math.floor((ms % 1000) / 10);
+  
+  const mStr = String(minutes).padStart(2, "0");
+  const sStr = String(seconds).padStart(2, "0");
+  const cStr = String(centiseconds).padStart(2, "0");
+  
+  return `${mStr}:${sStr}.${cStr}`;
+}
+
 let jsonSubtitles: SubtitleEntry[] = srtToJson(transcript);
 const wordJsonSub: WordEntry[] = sentenceToWords(jsonSubtitles);
 let timelineFrameId: number | null = null;
@@ -204,6 +136,16 @@ const time_content = document.getElementById("time_content");
 function renderTimeline(subtitles: SubtitleEntry[]): void {
   jsonSubtitles = subtitles;
   audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+
+  // Expose duration and subtitle count for the stats panel
+  window.audioDuration = audioTimeline;
+  window.subtitlesCount = jsonSubtitles.length;
+  window.updateStatsDashboard?.();
+
+  const totalTimeEl = document.getElementById("total-time");
+  if (totalTimeEl) {
+    totalTimeEl.textContent = formatTime(audioTimeline);
+  }
 
   if (!time_content) return;
 
@@ -240,7 +182,17 @@ function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number 
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
     globalTimelineProgress = Math.min(deltaTime / timelineLength, 1);
-    timelineProgress.style.left = `${globalTimelineProgress * (time_content as HTMLElement).offsetWidth}px`;
+    
+    if (timelineProgress && time_content) {
+      timelineProgress.style.left = `${globalTimelineProgress * time_content.offsetWidth}px`;
+    }
+    
+    // Update live timestamp in the playhead readout
+    const currentTimeEl = document.getElementById("current-time");
+    if (currentTimeEl) {
+      currentTimeEl.textContent = formatTime(Math.min(deltaTime, timelineLength));
+    }
+
     const subtitle = jsonSubtitles[current_subtitle];
 
     if (subtitle && deltaTime > subtitle.end) {
@@ -260,6 +212,9 @@ function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number 
       timelineFrameId = requestAnimationFrame(renderer);
     } else {
       globalTimelineProgress = 1;
+      if (currentTimeEl) {
+        currentTimeEl.textContent = formatTime(timelineLength);
+      }
     }
     // renderInstanceSubtitle(jsonSubtitles[0])
   }
@@ -282,6 +237,10 @@ function handleTranscriptUpload(event: Event): void {
       audioPlayer.currentTime = 0;
     }
     isclicked = false;
+    
+    // Reset playhead timer readout
+    const currentTimeEl = document.getElementById("current-time");
+    if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
   };
   reader.readAsText(file);
 }
@@ -300,6 +259,10 @@ function handleAudioUpload(event: Event): void {
   audioPlayer.currentTime = 0;
   stopTimeline();
   isclicked = false;
+
+  // Reset playhead timer readout
+  const currentTimeEl = document.getElementById("current-time");
+  if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
 }
 
 //===================Handle Play/Stop/Restart================================
@@ -317,7 +280,7 @@ function playAu(): void {
   audioPlayer.play();
 }
 
-//=======================Background===========================================
+//=======================Background Image===========================================
 function handleBackgroundUpload(event: Event): void {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -398,6 +361,15 @@ document.getElementById("stopButton")?.addEventListener("click", () => {
   stopTimeline();
   audioPlayer?.pause();
   isclicked = false;
+  
+  // Reset playhead timer readout and playhead location
+  const currentTimeEl = document.getElementById("current-time");
+  if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
+  
+  const timelineProgress = document.getElementById("timeline_progress") as HTMLElement;
+  if (timelineProgress) {
+    timelineProgress.style.left = "0px";
+  }
 });
 
 window.restartTimelineRenderer = restartTimeline;
