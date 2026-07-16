@@ -15,7 +15,7 @@
   --accent: #a855f7; /* Violet 500 */
   --accent-hover: #c084fc; /* Violet 400 */
   --accent-2: #f43f5e; /* Rose 500 */
-  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #f43f5e 100%);
+  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #433d47 100%);
   --accent-glow: rgba(168, 85, 247, 0.3);
   --accent-bg: rgba(168, 85, 247, 0.1);
 

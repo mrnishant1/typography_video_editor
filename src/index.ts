@@ -1,5 +1,5 @@
 import "./index.css";
-import { record } from "./videorecord";
+import { record, stopRecordingAndDownload } from "./videorecord";
 import { renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer";
 import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
@@ -42,6 +42,32 @@ console.log(canvas);
 let ctx: CanvasRenderingContext2D | null = null;
 if (canvas) {
   ctx = canvas.getContext("2d");
+}
+
+// Create and configure dynamic background video element
+export const bgVideo = document.createElement("video");
+bgVideo.id = "bg-video";
+bgVideo.muted = false;
+bgVideo.loop = false;
+bgVideo.playsInline = true;
+bgVideo.style.position = "absolute";
+bgVideo.style.top = "0";
+bgVideo.style.left = "0";
+bgVideo.style.width = "100%";
+bgVideo.style.height = "100%";
+bgVideo.style.objectFit = "cover";
+bgVideo.style.zIndex = "0";
+bgVideo.style.display = "none";
+bgVideo.style.borderRadius = "4px";
+
+if (canvas) {
+  const parent = canvas.parentElement;
+  if (parent) {
+    parent.style.position = "relative";
+    parent.insertBefore(bgVideo, canvas);
+  }
+  canvas.style.position = "relative";
+  canvas.style.zIndex = "1";
 }
 //=======================Load Transcript============================
 
@@ -105,6 +131,9 @@ Thank you for using the site, and happy
 00:00:27,390 --> 00:00:27,730
 creating!
 `;
+let audioPlayer: HTMLAudioElement | null = null;
+let audioSourceUrl: string | null = null;
+let backgroundImageSrc: string | null = null;
 
 //===================Helper Utilities==============================
 function formatTime(ms: number): string {
@@ -113,11 +142,11 @@ function formatTime(ms: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = Math.floor(totalSeconds % 60);
   const centiseconds = Math.floor((ms % 1000) / 10);
-  
+
   const mStr = String(minutes).padStart(2, "0");
   const sStr = String(seconds).padStart(2, "0");
   const cStr = String(centiseconds).padStart(2, "0");
-  
+
   return `${mStr}:${sStr}.${cStr}`;
 }
 
@@ -135,7 +164,10 @@ const time_content = document.getElementById("time_content");
 
 function renderTimeline(subtitles: SubtitleEntry[]): void {
   jsonSubtitles = subtitles;
-  audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+  // Fall back to subtitle length only if no custom audio or video duration is set
+  if (!audioSourceUrl && bgVideo.style.display === "none") {
+    audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+  }
 
   // Expose duration and subtitle count for the stats panel
   window.audioDuration = audioTimeline;
@@ -165,6 +197,18 @@ function renderTimeline(subtitles: SubtitleEntry[]): void {
   }
 }
 
+// Function to update timeline duration and reset stats/time readouts
+function updateTimelineLength(durationMs: number): void {
+  audioTimeline = durationMs;
+  window.audioDuration = audioTimeline;
+  window.updateStatsDashboard?.();
+  const totalTimeEl = document.getElementById("total-time");
+  if (totalTimeEl) {
+    totalTimeEl.textContent = formatTime(audioTimeline);
+  }
+  renderTimeline(jsonSubtitles);
+}
+
 renderTimeline(jsonSubtitles);
 
 //===================Timeline Renderer=================================
@@ -182,15 +226,23 @@ function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number 
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
     globalTimelineProgress = Math.min(deltaTime / timelineLength, 1);
-    
+
     if (timelineProgress && time_content) {
       timelineProgress.style.left = `${globalTimelineProgress * time_content.offsetWidth}px`;
     }
-    
+
     // Update live timestamp in the playhead readout
     const currentTimeEl = document.getElementById("current-time");
     if (currentTimeEl) {
       currentTimeEl.textContent = formatTime(Math.min(deltaTime, timelineLength));
+    }
+
+    // Keep background video in sync with playhead
+    if (bgVideo && bgVideo.style.display !== "none" && !bgVideo.paused) {
+      const targetTime = deltaTime / 1000;
+      if (Math.abs(bgVideo.currentTime - targetTime) > 0.15) {
+        bgVideo.currentTime = targetTime;
+      }
     }
 
     const subtitle = jsonSubtitles[current_subtitle];
@@ -212,6 +264,7 @@ function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number 
       timelineFrameId = requestAnimationFrame(renderer);
     } else {
       globalTimelineProgress = 1;
+      stopTimeline();
       if (currentTimeEl) {
         currentTimeEl.textContent = formatTime(timelineLength);
       }
@@ -221,7 +274,7 @@ function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number 
   console.log("hi");
   timelineFrameId = requestAnimationFrame(renderer);
 }
-
+//======================= Handlers -- Audio/Image/Video===========================================
 function handleTranscriptUpload(event: Event): void {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -237,7 +290,7 @@ function handleTranscriptUpload(event: Event): void {
       audioPlayer.currentTime = 0;
     }
     isclicked = false;
-    
+
     // Reset playhead timer readout
     const currentTimeEl = document.getElementById("current-time");
     if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
@@ -254,9 +307,15 @@ function handleAudioUpload(event: Event): void {
   }
 
   audioSourceUrl = URL.createObjectURL(file);
-  audioPlayer = new Audio(audioSourceUrl);
-  audioPlayer.pause();
-  audioPlayer.currentTime = 0;
+  const player = new Audio(audioSourceUrl);
+  audioPlayer = player;
+  player.pause();
+  player.currentTime = 0;
+
+  player.addEventListener("loadedmetadata", () => {
+    updateTimelineLength(player.duration * 1000);
+  });
+
   stopTimeline();
   isclicked = false;
 
@@ -265,22 +324,7 @@ function handleAudioUpload(event: Event): void {
   if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
 }
 
-//===================Handle Play/Stop/Restart================================
-let audioPlayer: HTMLAudioElement | null = null;
-let audioSourceUrl: string | null = null;
-let backgroundImageSrc: string | null = null;
 
-function playAu(): void {
-  if (!audioPlayer) {
-    audioPlayer = new Audio("/speech.mp3");
-  }
-
-  audioPlayer.pause();
-  audioPlayer.currentTime = 0;
-  audioPlayer.play();
-}
-
-//=======================Background Image===========================================
 function handleBackgroundUpload(event: Event): void {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -290,18 +334,49 @@ function handleBackgroundUpload(event: Event): void {
   }
 
   backgroundImageSrc = URL.createObjectURL(file);
-  const bgImage = new Image();
-  bgImage.onload = () => {
+
+  if (file.type.startsWith("video/")) {
     if (canvas) {
-      canvas.style.backgroundImage = `url(${backgroundImageSrc})`;
-      canvas.style.backgroundSize = "cover";
-      canvas.style.backgroundPosition = "center";
+      canvas.style.backgroundImage = "none";
     }
-  };
-  bgImage.onerror = () => {
-    console.error("Failed to load background image", file.name);
-  };
-  bgImage.src = backgroundImageSrc;
+    bgVideo.src = backgroundImageSrc;
+    bgVideo.style.display = "block";
+    bgVideo.load();
+    bgVideo.addEventListener("loadedmetadata", () => {
+      updateTimelineLength(bgVideo.duration * 1000);
+    });
+  } else {
+    bgVideo.style.display = "none";
+    bgVideo.src = "";
+
+    const bgImage = new Image();
+    bgImage.onload = () => {
+      if (canvas) {
+        canvas.style.backgroundImage = `url(${backgroundImageSrc})`;
+        canvas.style.backgroundSize = "cover";
+        canvas.style.backgroundPosition = "center";
+      }
+    };
+    bgImage.src = backgroundImageSrc;
+  }
+}
+
+//===================Handle Play/Stop/Restart================================
+
+function playAu(): void {
+  if (!audioPlayer) {
+    audioPlayer = new Audio("/speech.mp3");
+  }
+
+  audioPlayer.pause();
+  audioPlayer.currentTime = 0;
+  audioPlayer.play();
+
+  // Play background video if active
+  if (bgVideo && bgVideo.style.display !== "none") {
+    bgVideo.currentTime = 0;
+    bgVideo.play().catch((err) => console.log("Video play deferred:", err));
+  }
 }
 //Default Image
 backgroundImageSrc = "/bg.jpeg";
@@ -318,6 +393,15 @@ bgImage.onerror = () => {
 };
 bgImage.src = backgroundImageSrc;
 
+// Fetch default audio duration on load
+const defaultAudio = new Audio("/speech.mp3");
+
+defaultAudio.addEventListener("loadedmetadata", () => {
+  if (!audioSourceUrl && bgVideo.style.display === "none") {
+    updateTimelineLength(defaultAudio.duration * 1000);
+  }
+});
+
 function getWordsPerRender(): number {
   return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
 }
@@ -330,6 +414,17 @@ function stopTimeline(): void {
     if (pr_ms_FrameID !== null) cancelAnimationFrame(pr_ms_FrameID);
     timelineFrameId = null;
     pr_ms_FrameID = null;
+  }
+  stopRecordingAndDownload()
+  if (audioPlayer) {
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
+  } else {
+    console.log("fuck no audio player");
+  }
+  // Pause background video
+  if (bgVideo) {
+    bgVideo.pause();
   }
 }
 
@@ -361,14 +456,20 @@ document.getElementById("stopButton")?.addEventListener("click", () => {
   stopTimeline();
   audioPlayer?.pause();
   isclicked = false;
-  
+
   // Reset playhead timer readout and playhead location
   const currentTimeEl = document.getElementById("current-time");
   if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
-  
+
   const timelineProgress = document.getElementById("timeline_progress") as HTMLElement;
   if (timelineProgress) {
     timelineProgress.style.left = "0px";
+  }
+
+  // Pause and reset background video
+  if (bgVideo) {
+    bgVideo.pause();
+    bgVideo.currentTime = 0;
   }
 });
 
@@ -380,6 +481,7 @@ document.getElementById("backgroundInput")?.addEventListener("change", handleBac
 //==================================Record ========================================
 function recordingVideo(canvas: HTMLCanvasElement, time: number): void {
   const recording = record(canvas, time);
+
   // play it on another video element
   var video$ = document.createElement("video");
   document.body.appendChild(video$);
@@ -388,7 +490,8 @@ function recordingVideo(canvas: HTMLCanvasElement, time: number): void {
   // download it
   var link$ = document.createElement("a");
   link$.innerText = "download";
-  link$.setAttribute("download", "recordingVideo");
+  const ext = MediaRecorder.isTypeSupported("video/mp4") ? "mp4" : "webm";
+  link$.setAttribute("download", `recordingVideo.${ext}`);
   recording.then((url) => {
     link$.setAttribute("href", url);
     link$.click();

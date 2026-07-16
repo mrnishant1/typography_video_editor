@@ -27,6 +27,10 @@ function getCanvasBackground(canvas: HTMLCanvasElement): Promise<HTMLImageElemen
   });
 }
 
+let currentMediaRecorder: MediaRecorder | null = null;
+let currentAudioContext: AudioContext | null = null;
+let currentAudioStream: MediaStream | null = null;
+
 export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudioElement | number | null, duration?: number): Promise<string> {
   // Support the previous record(canvas, duration) form too.
   if (typeof audioElement === "number") {
@@ -42,7 +46,10 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
   const recordingContext = recordingCanvas.getContext("2d");
   if (!recordingContext) throw new Error("Unable to create a recording canvas");
 
-  const background = await getCanvasBackground(canvas);
+  const bgVideo = document.getElementById("bg-video") as HTMLVideoElement | null;
+  const isVideoBg = !!(bgVideo && bgVideo.style.display !== "none" && bgVideo.src);
+
+  const background = isVideoBg ? null : await getCanvasBackground(canvas);
   const backgroundColor = getComputedStyle(canvas).backgroundColor;
   let frameId: number | null = null;
   let shouldDraw = true;
@@ -54,7 +61,11 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
       recordingContext.fillStyle = backgroundColor;
       recordingContext.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
     }
-    if (background) drawCover(recordingContext, background, recordingCanvas.width, recordingCanvas.height);
+    if (isVideoBg && bgVideo) {
+      drawCover(recordingContext, bgVideo, recordingCanvas.width, recordingCanvas.height);
+    } else if (background) {
+      drawCover(recordingContext, background, recordingCanvas.width, recordingCanvas.height);
+    }
     recordingContext.drawImage(canvas, 0, 0, recordingCanvas.width, recordingCanvas.height);
     frameId = requestAnimationFrame(drawFrame);
   };
@@ -62,12 +73,44 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
 
   const videoStream = recordingCanvas.captureStream(30);
   const tracks: MediaStreamTrack[] = [...videoStream.getVideoTracks()];
-  const audioStream = (audioElement as any)?.captureStream?.() || audioElement?.mozCaptureStream?.();
-  if (audioStream) tracks.push(...audioStream.getAudioTracks());
+  
+  // Capture audio from system and audioElement
+  const audioContext = new AudioContext();
+  currentAudioContext = audioContext;
+  const audioDestination = audioContext.createMediaStreamDestination();
+  
+  // Add audio element if provided
+  if (audioElement instanceof HTMLAudioElement) {
+    const audioSource = audioContext.createMediaElementSource(audioElement);
+    audioSource.connect(audioDestination);
+  }
+  
+  // Capture microphone/system audio
+  try {
+    const userAudio = await navigator.mediaDevices.getUserMedia({ audio: true });
+    userAudio.getAudioTracks().forEach(track => {
+      const source = audioContext.createMediaStreamSource(userAudio);
+      source.connect(audioDestination);
+    });
+  } catch (err) {
+    console.warn("Microphone access denied or unavailable");
+  }
+  
+  tracks.push(...audioDestination.stream.getAudioTracks());
 
   const stream = new MediaStream(tracks);
-  const preferredMimeType = "video/webm;codecs=vp9,opus";
-  const options = MediaRecorder.isTypeSupported(preferredMimeType) ? { mimeType: preferredMimeType } : undefined;
+  currentAudioStream = stream;
+  
+  // Prefer mp4 if supported, fallback to webm
+  let mimeType = "video/webm;codecs=vp9,opus";
+  if (MediaRecorder.isTypeSupported("video/mp4;codecs=avc1.42E01E,mp4a.40.2")) {
+    mimeType = "video/mp4;codecs=avc1.42E01E,mp4a.40.2";
+  } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+    mimeType = "video/mp4";
+  } else if (MediaRecorder.isTypeSupported("video/webm")) {
+    mimeType = "video/webm";
+  }
+  const options = { mimeType };
 
   return new Promise(function (resolve, reject) {
     const stopDrawing = () => {
@@ -77,6 +120,7 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
     let mediaRecorder: MediaRecorder;
     try {
       mediaRecorder = new MediaRecorder(stream, options);
+      currentMediaRecorder = mediaRecorder;
     } catch (error) {
       stopDrawing();
       reject(error);
@@ -93,13 +137,54 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
     };
     mediaRecorder.onstop = () => {
       stopDrawing();
-      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "video/webm" });
+      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || mimeType });
       resolve(URL.createObjectURL(blob));
     };
 
     mediaRecorder.start();
-    window.setTimeout(() => {
-      if (mediaRecorder.state === "recording") mediaRecorder.stop();
-    }, duration || 4000);
+    
+    if (duration) {
+      window.setTimeout(() => {
+        if (mediaRecorder.state === "recording") mediaRecorder.stop();
+      }, duration);
+    }
   });
 }
+
+export function stopRecordingAndDownload(filename: string = "recording.mp4"): void {
+  if (!currentMediaRecorder || currentMediaRecorder.state === "inactive") {
+    console.warn("No active recording to stop");
+    return;
+  }
+
+  const recordedChunks: BlobPart[] = [];
+  const mimeType = currentMediaRecorder.mimeType || "video/webm";
+
+  currentMediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) recordedChunks.push(event.data);
+  };
+
+  currentMediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // Clean up
+    if (currentAudioContext) {
+      currentAudioContext.close();
+      currentAudioContext = null;
+    }
+    currentAudioStream?.getTracks().forEach(track => track.stop());
+    currentAudioStream = null;
+    currentMediaRecorder = null;
+  };
+
+  currentMediaRecorder.stop();
+}
+
