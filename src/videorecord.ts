@@ -74,28 +74,16 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
   const videoStream = recordingCanvas.captureStream(30);
   const tracks: MediaStreamTrack[] = [...videoStream.getVideoTracks()];
   
-  // Capture audio from system and audioElement
+  // Capture audio from the provided audio element only.
   const audioContext = new AudioContext();
   currentAudioContext = audioContext;
   const audioDestination = audioContext.createMediaStreamDestination();
-  
-  // Add audio element if provided
+
   if (audioElement instanceof HTMLAudioElement) {
     const audioSource = audioContext.createMediaElementSource(audioElement);
     audioSource.connect(audioDestination);
   }
-  
-  // Capture microphone/system audio
-  try {
-    const userAudio = await navigator.mediaDevices.getUserMedia({ audio: true });
-    userAudio.getAudioTracks().forEach(track => {
-      const source = audioContext.createMediaStreamSource(userAudio);
-      source.connect(audioDestination);
-    });
-  } catch (err) {
-    console.warn("Microphone access denied or unavailable");
-  }
-  
+
   tracks.push(...audioDestination.stream.getAudioTracks());
 
   const stream = new MediaStream(tracks);

@@ -702,8 +702,9 @@ input[type="number"]:focus {
 
 /* Upload cards layout */
 .upload-dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  display: flex;
+  
+  /* grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); */
   gap: 14px;
 }
 
