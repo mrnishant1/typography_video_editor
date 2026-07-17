@@ -1,8 +1,9 @@
 import { drawTextInBox, Layout } from "./draw_dynamicText";
 import type { Box, CachedGlyph, CanvasTextProperties, SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
+import { recordFrames } from "./videorecord";
 
 export const globalCanvasTextProperties: CanvasTextProperties = {
-  fontSize: [10,20,30,40,50, 100, 150, 200, 250, 300, 350, 400],
+  fontSize: [10, 20, 30, 40, 50, 100, 150, 200, 250, 300, 350, 400],
   English_fonts: [
     "'Akronim'",
     "'Bangers'",
@@ -62,7 +63,7 @@ export const globalCanvasTextProperties: CanvasTextProperties = {
 
   // fontWeight: ["400", "500", "600", "700", "800", "900"],
   fontStyle: ["normal", "italic"],
-  
+
   color: ["#FFFFFF", "#000000", "#FFD700", "#00FFFF", "#FF6B6B", "#A0E7E5", "#FF3CAC", "#7DFFB3", "#FFA62B", "#845EC2"],
   strokeColor: ["#000000", "#FFFFFF", "transparent", "#111111", "#FF0000", "#00FF00", "#0000FF", "#FFD700"],
   strokeWidth: [0, 1, 2, 3, 4, 5, 6],
@@ -181,7 +182,6 @@ export function applyTextStyles(ctx: CanvasRenderingContext2D | null, styles: Pa
   ctx.textAlign = styles.textAlign || "left";
 }
 
-
 export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: number, ctx: CanvasRenderingContext2D | null, incomingStyles: Partial<SubtitleStyleOptions> = {}): number | null {
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
@@ -224,7 +224,7 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
         width: canvasWidth * 0.8,
         height: canvasHeight * 0.8,
       });
-      
+
       count = layout.fill_parentBox(Number(fh), Number(ms));
 
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -246,15 +246,15 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     if (char_per_line) {
       //==================Debugging Boundaries=====================================================
-      
+
       // ctx.beginPath();
       // ctx.strokeStyle = "rgb(68, 0, 255)";
       // ctx.strokeRect(layout!.parent.x, layout!.parent.y, layout!.parent.width, layout!.parent.height);
       // ctx.stroke();
       // ctx.strokeStyle = "rgb(0, 0, 0)";
       // ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
-      
-      console.log(layout ? "" : "fuck layout not ");
+
+      // console.log(layout ? "" : "fuck layout not ");
       drawTextInBox(textToDraw, ctx, textBox, fh, styles);
     }
 
@@ -291,4 +291,26 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
 
   pr_ms_FrameID = requestAnimationFrame(per_ms_render);
   return pr_ms_FrameID;
+}
+export function getWordsPerRender(): number {
+  return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
+}
+
+export function recordingVideo(canvas: HTMLCanvasElement, time: number, audio?:HTMLAudioElement | number | null): void {
+  const recording = recordFrames(canvas, time);
+
+  // play it on another video element
+  var video$ = document.createElement("video");
+  document.body.appendChild(video$);
+  recording.then((url) => video$.setAttribute("src", url));
+
+  // download it
+  var link$ = document.createElement("a");
+  link$.innerText = "download";
+  const ext = MediaRecorder.isTypeSupported("video/mp4") ? "mp4" : "webm";
+  link$.setAttribute("download", `recordingVideo.${ext}`);
+  recording.then((url) => {
+    link$.setAttribute("href", url);
+    link$.click();
+  });
 }

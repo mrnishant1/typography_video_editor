@@ -1,4 +1,4 @@
-import { globalCanvasTextProperties } from "./wordrenderer";
+import { globalCanvasTextProperties } from "./used_functions";
 import type { SubtitleStyleOptions } from "./types";
 
 const panel = document.getElementById("style-panel");

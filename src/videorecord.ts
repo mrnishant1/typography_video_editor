@@ -27,15 +27,18 @@ function getCanvasBackground(canvas: HTMLCanvasElement): Promise<HTMLImageElemen
   });
 }
 
-let currentMediaRecorder: MediaRecorder | null = null;
-let currentAudioContext: AudioContext | null = null;
-let currentAudioStream: MediaStream | null = null;
+interface RecordingSession {
+  mediaRecorder: MediaRecorder;
+  stream: MediaStream;
+  stopDrawing: () => void;
+}
 
-export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudioElement | number | null, duration?: number): Promise<string> {
-  // Support the previous record(canvas, duration) form too.
-  if (typeof audioElement === "number") {
-    duration = audioElement;
-    audioElement = null;
+let activeSession: RecordingSession | null = null;
+
+export async function recordFrames(canvas: HTMLCanvasElement, duration?: number): Promise<string> {
+  
+  if (activeSession) {
+    throw new Error("record() called while a recording is already in progress.");
   }
 
   // CSS backgrounds are not pixels in the canvas bitmap, so capture a second
@@ -51,46 +54,67 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
 
   const background = isVideoBg ? null : await getCanvasBackground(canvas);
   const backgroundColor = getComputedStyle(canvas).backgroundColor;
+
+
+  // const background = await getCanvasBackground(canvas);
+  // const backgroundColor = getComputedStyle(canvas).backgroundColor;
   let frameId: number | null = null;
   let shouldDraw = true;
 
+  const stopDrawing = () => {
+    console.log("stop was called to stop recording");
+    shouldDraw = false;
+    if (frameId !== null) {
+      cancelAnimationFrame(frameId);
+      frameId = null;
+    }
+  };
+
+  // const drawFrame = () => {
+  //   if (!shouldDraw) return;
+  //   recordingContext.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+  //   if (backgroundColor && backgroundColor !== "rgba(0, 0, 0, 0)") {
+  //     recordingContext.fillStyle = backgroundColor;
+  //     recordingContext.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+  //   }
+  //   if (background) drawCover(recordingContext, background, recordingCanvas.width, recordingCanvas.height);
+  //   recordingContext.drawImage(canvas, 0, 0, recordingCanvas.width, recordingCanvas.height);
+  //   frameId = requestAnimationFrame(drawFrame);
+  // };
+  // drawFrame();
+
   const drawFrame = () => {
     if (!shouldDraw) return;
+
     recordingContext.clearRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+
     if (backgroundColor && backgroundColor !== "rgba(0, 0, 0, 0)") {
       recordingContext.fillStyle = backgroundColor;
       recordingContext.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
     }
+
     if (isVideoBg && bgVideo) {
       drawCover(recordingContext, bgVideo, recordingCanvas.width, recordingCanvas.height);
     } else if (background) {
       drawCover(recordingContext, background, recordingCanvas.width, recordingCanvas.height);
     }
+
     recordingContext.drawImage(canvas, 0, 0, recordingCanvas.width, recordingCanvas.height);
     frameId = requestAnimationFrame(drawFrame);
   };
+
   drawFrame();
 
   const videoStream = recordingCanvas.captureStream(30);
   const tracks: MediaStreamTrack[] = [...videoStream.getVideoTracks()];
-  
-  // Capture audio from the provided audio element only.
-  const audioContext = new AudioContext();
-  currentAudioContext = audioContext;
-  const audioDestination = audioContext.createMediaStreamDestination();
-
-  if (audioElement instanceof HTMLAudioElement) {
-    const audioSource = audioContext.createMediaElementSource(audioElement);
-    audioSource.connect(audioDestination);
-  }
-
-  tracks.push(...audioDestination.stream.getAudioTracks());
+  // const audioStream = (audioElement as any)?.captureStream?.() || audioElement?.mozCaptureStream?.();
+  // if (audioStream) tracks.push(...audioStream.getAudioTracks());
 
   const stream = new MediaStream(tracks);
-  currentAudioStream = stream;
-  
-  // Prefer mp4 if supported, fallback to webm
-  let mimeType = "video/webm;codecs=vp9,opus";
+  const preferredMimeType = "video/webm;codecs=vp9,opus";
+  const options = MediaRecorder.isTypeSupported(preferredMimeType) ? { mimeType: preferredMimeType } : undefined;
+
+  let mimeType = preferredMimeType || "video/webm;codecs=vp9,opus";
   if (MediaRecorder.isTypeSupported("video/mp4;codecs=avc1.42E01E,mp4a.40.2")) {
     mimeType = "video/mp4;codecs=avc1.42E01E,mp4a.40.2";
   } else if (MediaRecorder.isTypeSupported("video/mp4")) {
@@ -98,81 +122,74 @@ export async function record(canvas: HTMLCanvasElement, audioElement?: HTMLAudio
   } else if (MediaRecorder.isTypeSupported("video/webm")) {
     mimeType = "video/webm";
   }
-  const options = { mimeType };
 
-  return new Promise(function (resolve, reject) {
-    const stopDrawing = () => {
-      shouldDraw = false;
-      if (frameId !== null) cancelAnimationFrame(frameId);
+  return new Promise<string>((resolve, reject) => {
+    const chunks: BlobPart[] = [];
+    let cleanedUp = false;
+
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      stopDrawing();
+      console.log("cleanup was called to stop recording");
+
+      // audioContext.close();
+      stream.getTracks().forEach((track) => track.stop());
+      activeSession = null;
     };
-    let mediaRecorder: MediaRecorder;
+
     try {
-      mediaRecorder = new MediaRecorder(stream, options);
-      currentMediaRecorder = mediaRecorder;
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      activeSession = { mediaRecorder, stream, stopDrawing };
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        cleanup();
+        reject((event as any).error ?? new Error("MediaRecorder error"));
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || mimeType });
+        resolve(URL.createObjectURL(blob));
+        window.setTimeout(cleanup, 0);
+        console.log("mediarecorder.onstop was called to mediarecorder.onstop recording");
+      };
+
+      mediaRecorder.start(250);
+
+      if (duration) {
+        const stopAfterMs = Math.max(1000, duration);
+        if (duration < 1000) {
+          console.warn(`record(): duration=${duration} is under 1000 (expected ms). Clamped to 1000ms.`);
+        }
+        const startedAt = performance.now();
+
+        const timer = window.setInterval(() => {
+          if (performance.now() - startedAt >= stopAfterMs) {
+            clearInterval(timer);
+            if (mediaRecorder.state === "recording") {
+              mediaRecorder.requestData();
+              mediaRecorder.stop();
+              console.log("clearInterval was called to clearInterval recording");
+            }
+          }
+        }, 100);
+      }
     } catch (error) {
-      stopDrawing();
+      cleanup();
       reject(error);
-      return;
-    }
-
-    const recordedChunks: BlobPart[] = [];
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) recordedChunks.push(event.data);
-    };
-    mediaRecorder.onerror = (event) => {
-      stopDrawing();
-      reject((event as any).error);
-    };
-    mediaRecorder.onstop = () => {
-      stopDrawing();
-      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || mimeType });
-      resolve(URL.createObjectURL(blob));
-    };
-
-    mediaRecorder.start();
-    
-    if (duration) {
-      window.setTimeout(() => {
-        if (mediaRecorder.state === "recording") mediaRecorder.stop();
-      }, duration);
     }
   });
 }
 
-export function stopRecordingAndDownload(filename: string = "recording.mp4"): void {
-  if (!currentMediaRecorder || currentMediaRecorder.state === "inactive") {
-    console.warn("No active recording to stop");
-    return;
+export function stopRecordingAndDownload(): void {
+  if (!activeSession || activeSession.mediaRecorder.state !== "recording") {
+    throw console.error("stop was called to stop recording");
   }
-
-  const recordedChunks: BlobPart[] = [];
-  const mimeType = currentMediaRecorder.mimeType || "video/webm";
-
-  currentMediaRecorder.ondataavailable = (event) => {
-    if (event.data.size > 0) recordedChunks.push(event.data);
-  };
-
-  currentMediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    // Clean up
-    if (currentAudioContext) {
-      currentAudioContext.close();
-      currentAudioContext = null;
-    }
-    currentAudioStream?.getTracks().forEach(track => track.stop());
-    currentAudioStream = null;
-    currentMediaRecorder = null;
-  };
-
-  currentMediaRecorder.stop();
+  console.log("stop recording called");
+  activeSession.mediaRecorder.requestData();
+  activeSession.mediaRecorder.stop();
 }
-

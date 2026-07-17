@@ -3,7 +3,7 @@
 // Every placement removes one free rect, places a box in its top-left corner,
 // then splits the leftover into up to two new free rects (guillotine cut).
 
-import { applyTextStyles } from "./wordrenderer";
+import { applyTextStyles } from "./used_functions";
 import type { Box, Rect, SubtitleStyleOptions } from "./types";
 
 export class Layout {

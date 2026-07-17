@@ -1,6 +1,6 @@
 import "./index.css";
-import { record, stopRecordingAndDownload } from "./videorecord";
-import { renderInstanceSubtitle, sentenceToWords, srtToJson } from "./wordrenderer";
+import { recordFrames, stopRecordingAndDownload } from "./videorecord";
+import { getWordsPerRender, recordingVideo, renderInstanceSubtitle, sentenceToWords, srtToJson } from "./used_functions";
 import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
@@ -324,7 +324,6 @@ function handleAudioUpload(event: Event): void {
   if (currentTimeEl) currentTimeEl.textContent = "00:00.00";
 }
 
-
 function handleBackgroundUpload(event: Event): void {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -361,23 +360,6 @@ function handleBackgroundUpload(event: Event): void {
   }
 }
 
-//===================Handle Play/Stop/Restart================================
-
-function playAu(): void {
-  if (!audioPlayer) {
-    audioPlayer = new Audio("/speech.mp3");
-  }
-
-  audioPlayer.pause();
-  audioPlayer.currentTime = 0;
-  audioPlayer.play();
-
-  // Play background video if active
-  if (bgVideo && bgVideo.style.display !== "none") {
-    bgVideo.currentTime = 0;
-    bgVideo.play().catch((err) => console.log("Video play deferred:", err));
-  }
-}
 //Default Image
 backgroundImageSrc = "/bg.jpeg";
 const bgImage = new Image();
@@ -402,12 +384,9 @@ defaultAudio.addEventListener("loadedmetadata", () => {
   }
 });
 
-function getWordsPerRender(): number {
-  return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
-}
+//===================Handle Play/Stop/Restart================================
 let isclicked = false;
-
-function stopTimeline(): void {
+function stopTimeline({ stopRecording = false } = {}): void {
   stopTimelineRenderer = true;
   if (timelineFrameId !== null) {
     cancelAnimationFrame(timelineFrameId);
@@ -415,26 +394,50 @@ function stopTimeline(): void {
     timelineFrameId = null;
     pr_ms_FrameID = null;
   }
-  stopRecordingAndDownload()
+
+  if (stopRecording) {
+    stopRecordingAndDownload();
+    isRecording = false;
+  }
+
   if (audioPlayer) {
     audioPlayer.pause();
     audioPlayer.currentTime = 0;
-  } else {
-    console.log("fuck no audio player");
   }
-  // Pause background video
-  if (bgVideo) {
-    bgVideo.pause();
+}
+
+async function safePlayMedia(media: HTMLMediaElement, label: string): Promise<void> {
+  try {
+    await media.play();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      console.log(`${label} play deferred: play request was aborted.`);
+    } else {
+      console.log(`${label} play deferred:`, err);
+    }
+  }
+}
+
+async function playAu(): Promise<void> {
+  if (!audioPlayer) {
+    audioPlayer = new Audio("/speech.mp3");
+  }
+
+  audioPlayer.currentTime = 0;
+  await safePlayMedia(audioPlayer, "Audio");
+
+  if (bgVideo && bgVideo.style.display !== "none" && bgVideo.src) {
+    bgVideo.currentTime = 0;
+    await safePlayMedia(bgVideo, "Background video");
   }
 }
 
 function restartTimeline(): void {
-  stopTimeline();
+  stopTimeline({ stopRecording: isRecording });
   playAu();
   timelineRenderer(jsonSubtitles, getWordsPerRender());
   stopTimelineRenderer = false;
 }
-
 // ---- Play / Stop transport controls ----
 // Same play/restart logic as before, now driven by two explicit buttons
 // instead of one ambiguous "Play controls" div.
@@ -449,12 +452,8 @@ document.getElementById("playButton")?.addEventListener("click", () => {
 });
 
 document.getElementById("stopButton")?.addEventListener("click", () => {
-  // stopTimeline() itself only ever cancelled the animation frames — it never
-  // touched audio playback. Pausing the audio here too, and resetting
-  // isclicked, is the only new behavior added: it's what makes "Stop" actually
-  // stop, and lets the next Play press start fresh instead of restarting.
-  stopTimeline();
-  audioPlayer?.pause();
+  stopTimeline({ stopRecording: isRecording });
+  // audioPlayer?.pause();
   isclicked = false;
 
   // Reset playhead timer readout and playhead location
@@ -479,26 +478,22 @@ document.getElementById("audioInput")?.addEventListener("change", handleAudioUpl
 document.getElementById("backgroundInput")?.addEventListener("change", handleBackgroundUpload);
 
 //==================================Record ========================================
-function recordingVideo(canvas: HTMLCanvasElement, time: number): void {
-  const recording = record(canvas, time);
 
-  // play it on another video element
-  var video$ = document.createElement("video");
-  document.body.appendChild(video$);
-  recording.then((url) => video$.setAttribute("src", url));
+let isRecording = false;
+document.getElementById("recordButton")?.addEventListener("click", async () => {
+  if (isRecording) {
+    throw new Error("record() called while a recording is already in progress.");
+  }
 
-  // download it
-  var link$ = document.createElement("a");
-  link$.innerText = "download";
-  const ext = MediaRecorder.isTypeSupported("video/mp4") ? "mp4" : "webm";
-  link$.setAttribute("download", `recordingVideo.${ext}`);
-  recording.then((url) => {
-    link$.setAttribute("href", url);
-    link$.click();
-  });
-}
-
-document.getElementById("recordButton")?.addEventListener("click", (e) => {
   restartTimeline();
-  if (canvas) recordingVideo(canvas, audioTimeline);
+
+  if (!canvas) {
+    console.log("no canvas");
+    return;
+  }
+  isRecording = true;
+  console.log("audio timeline, isrecording", audioTimeline, isRecording);
+  recordingVideo(canvas, audioTimeline, audioPlayer);
 });
+
+
