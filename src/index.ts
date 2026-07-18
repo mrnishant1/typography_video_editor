@@ -477,6 +477,55 @@ document.getElementById("transcriptInput")?.addEventListener("change", handleTra
 document.getElementById("audioInput")?.addEventListener("change", handleAudioUpload);
 document.getElementById("backgroundInput")?.addEventListener("change", handleBackgroundUpload);
 
+
+//====================================Draw Rect approach for subs========================
+let isMouseDown = false;
+let startX = 0;
+let startY = 0;
+
+function getCanvasPos(e: MouseEvent) {
+  const rect = canvas!.getBoundingClientRect();
+  const scaleX = canvas!.width / rect.width;
+  const scaleY = canvas!.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+}
+
+canvas?.addEventListener("mousedown", (e) => {
+  isMouseDown = true;
+  const pos = getCanvasPos(e);
+  startX = pos.x;
+  startY = pos.y;
+});
+
+canvas?.addEventListener("mousemove", (e) => {
+  if (!isMouseDown) return;
+
+  const pos = getCanvasPos(e);
+  const x = Math.min(startX, pos.x);
+  const y = Math.min(startY, pos.y);
+  const width = Math.abs(pos.x - startX);
+  const height = Math.abs(pos.y - startY);
+
+  window.LayoutX = x;
+  window.LayoutY = y;
+  window.LayoutWidth = width;
+  window.LayoutHeight = height;
+
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "blue";
+    ctx.strokeRect(x, y, width, height);
+  }
+});
+
+canvas?.addEventListener("mouseup", () => {
+  isMouseDown = false;
+  
+});
+
 //==================================Record ========================================
 
 let isRecording = false;
@@ -495,5 +544,3 @@ document.getElementById("recordButton")?.addEventListener("click", async () => {
   console.log("audio timeline, isrecording", audioTimeline, isRecording);
   recordingVideo(canvas, audioTimeline, audioPlayer);
 });
-
-

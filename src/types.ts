@@ -95,6 +95,10 @@ declare global {
     updateStatsDashboard?: () => void;
     audioDuration?: number;
     subtitlesCount?: number;
+    LayoutX?:number
+    LayoutY?:number
+    LayoutWidth?:number
+    LayoutHeight?:number
   }
 
   interface HTMLCanvasElement {

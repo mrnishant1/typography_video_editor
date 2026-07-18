@@ -219,10 +219,10 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
 
       //Making parent Box Layout for next text batch
       layout = new Layout({
-        x: canvasWidth * 0.1,
-        y: canvasWidth * 0.1,
-        width: canvasWidth * 0.8,
-        height: canvasHeight * 0.8,
+        x: window.LayoutX || canvasWidth * 0.1,
+        y: window.LayoutY || canvasWidth * 0.1,
+        width: window.LayoutWidth || canvasWidth * 0.8,
+        height: window.LayoutHeight || canvasHeight * 0.8,
       });
 
       count = layout.fill_parentBox(Number(fh), Number(ms));
