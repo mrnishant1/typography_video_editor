@@ -1,5 +1,5 @@
 import "./index.css";
-import { recordFrames, stopRecordingAndDownload } from "./videorecord";
+import { stopRecordingAndDownload } from "./videorecord";
 import { getWordsPerRender, recordingVideo, renderInstanceSubtitle, sentenceToWords, srtToJson } from "./used_functions";
 import type { SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 
@@ -151,14 +151,14 @@ function formatTime(ms: number): string {
 }
 
 let jsonSubtitles: SubtitleEntry[] = srtToJson(transcript);
-const wordJsonSub: WordEntry[] = sentenceToWords(jsonSubtitles);
 let timelineFrameId: number | null = null;
 let pr_ms_FrameID: number | null = null;
 let stopTimelineRenderer = false;
 
 //===================Timeline HTML=================================
-const timelineStarting = 0;
-let audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+
+let GlobalTimeLine = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+window.GlobalTimeline = GlobalTimeLine;
 
 const time_content = document.getElementById("time_content");
 
@@ -166,17 +166,17 @@ function renderTimeline(subtitles: SubtitleEntry[]): void {
   jsonSubtitles = subtitles;
   // Fall back to subtitle length only if no custom audio or video duration is set
   if (!audioSourceUrl && bgVideo.style.display === "none") {
-    audioTimeline = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
+    GlobalTimeLine = jsonSubtitles[jsonSubtitles.length - 1]?.end || 0;
   }
 
   // Expose duration and subtitle count for the stats panel
-  window.audioDuration = audioTimeline;
+  window.audioDuration = GlobalTimeLine;
   window.subtitlesCount = jsonSubtitles.length;
   window.updateStatsDashboard?.();
 
   const totalTimeEl = document.getElementById("total-time");
   if (totalTimeEl) {
-    totalTimeEl.textContent = formatTime(audioTimeline);
+    totalTimeEl.textContent = formatTime(GlobalTimeLine);
   }
 
   if (!time_content) return;
@@ -187,10 +187,10 @@ function renderTimeline(subtitles: SubtitleEntry[]): void {
   const subtitle_in_timeline = document.getElementById("subtitle_in_timeline");
   if (subtitle_in_timeline) {
     const blocks = jsonSubtitles.map((element) => {
-      const start = (element.start / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
-      const end = (element.end / Math.max(audioTimeline, 1)) * time_content.offsetWidth;
+      const start = (element.start / Math.max(GlobalTimeLine, 1)) * time_content.offsetWidth;
+      const end = (element.end / Math.max(GlobalTimeLine, 1)) * time_content.offsetWidth;
       const width = end - start;
-      return `<div id="subtitle" style="position:absolute; left:${start}px; width:${width}px; height:100%; background:rgba(255, 0, 0, 0.38); color:white; font-size:14px; overflow:hidden;
+      return `<div id="subtitle" style="position:absolute; left:${start}px; width:${width}px;  background:rgba(255, 0, 0, 0.38); color:white; font-size:14px; overflow:hidden;
          text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; padding:2px 4px;">${element.text}</div>`;
     });
     subtitle_in_timeline.innerHTML = blocks.join("");
@@ -199,12 +199,13 @@ function renderTimeline(subtitles: SubtitleEntry[]): void {
 
 // Function to update timeline duration and reset stats/time readouts
 function updateTimelineLength(durationMs: number): void {
-  audioTimeline = durationMs;
-  window.audioDuration = audioTimeline;
+  GlobalTimeLine = durationMs;
+  window.GlobalTimeline = GlobalTimeLine;
+  window.audioDuration = GlobalTimeLine;
   window.updateStatsDashboard?.();
   const totalTimeEl = document.getElementById("total-time");
   if (totalTimeEl) {
-    totalTimeEl.textContent = formatTime(audioTimeline);
+    totalTimeEl.textContent = formatTime(GlobalTimeLine);
   }
   renderTimeline(jsonSubtitles);
 }
@@ -212,7 +213,7 @@ function updateTimelineLength(durationMs: number): void {
 renderTimeline(jsonSubtitles);
 
 //===================Timeline Renderer=================================
-function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number = 1, timelineLength: number = audioTimeline): void {
+function timelineRenderer(jsonSubtitles: SubtitleEntry[], char_per_line: number = 1, timelineLength: number = GlobalTimeLine): void {
   const scaleFactor = 1;
   let prev_timestamp: number | null = null;
   let globalTimelineProgress = 0;
@@ -477,54 +478,7 @@ document.getElementById("transcriptInput")?.addEventListener("change", handleTra
 document.getElementById("audioInput")?.addEventListener("change", handleAudioUpload);
 document.getElementById("backgroundInput")?.addEventListener("change", handleBackgroundUpload);
 
-
 //====================================Draw Rect approach for subs========================
-let isMouseDown = false;
-let startX = 0;
-let startY = 0;
-
-function getCanvasPos(e: MouseEvent) {
-  const rect = canvas!.getBoundingClientRect();
-  const scaleX = canvas!.width / rect.width;
-  const scaleY = canvas!.height / rect.height;
-  return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY,
-  };
-}
-
-canvas?.addEventListener("mousedown", (e) => {
-  isMouseDown = true;
-  const pos = getCanvasPos(e);
-  startX = pos.x;
-  startY = pos.y;
-});
-
-canvas?.addEventListener("mousemove", (e) => {
-  if (!isMouseDown) return;
-
-  const pos = getCanvasPos(e);
-  const x = Math.min(startX, pos.x);
-  const y = Math.min(startY, pos.y);
-  const width = Math.abs(pos.x - startX);
-  const height = Math.abs(pos.y - startY);
-
-  window.LayoutX = x;
-  window.LayoutY = y;
-  window.LayoutWidth = width;
-  window.LayoutHeight = height;
-
-  if (ctx) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "blue";
-    ctx.strokeRect(x, y, width, height);
-  }
-});
-
-canvas?.addEventListener("mouseup", () => {
-  isMouseDown = false;
-  
-});
 
 //==================================Record ========================================
 
@@ -541,6 +495,6 @@ document.getElementById("recordButton")?.addEventListener("click", async () => {
     return;
   }
   isRecording = true;
-  console.log("audio timeline, isrecording", audioTimeline, isRecording);
-  recordingVideo(canvas, audioTimeline, audioPlayer);
+  console.log("audio timeline, isrecording", GlobalTimeLine, isRecording);
+  recordingVideo(canvas, GlobalTimeLine, audioPlayer);
 });

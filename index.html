@@ -85,8 +85,8 @@
                         <h3>Subtitle Layout Settings</h3>
                     </div>
                     <div class="panel-body">
-                        <p class="panel-hint" style="color: red;">Just Select Rectangle Tool, Draw the area where you want your subtitles!.</p>
-                        <button id="draw-subarea">▭</button>
+                        <p class="panel-hint" style="color: rgb(194, 190, 190);">Random Layout Selected: By Default</p>
+                        <button id="create_custom_layout" href="./customL.html">Create Custom Layout</button>
                     </div>
                 </div>
                 <!-- Section 1: Canvas Settings -->
@@ -233,12 +233,16 @@
                                 <input id="backgroundInput" type="file" accept="image/*,video/*" style="display:none" />
                             </label>
                         </div>
-                        <button id="recordButton" class="btn btn-record" aria-label="Record Video">
-                            <span class="record-indicator">
-                                <span class="record-pulse"></span>
-                            </span>
-                            Record Video
-                        </button>
+                        <div style="display: flex; flex-direction: column;">
+                            <button id="recordButton" class="btn btn-record" aria-label="Record Video">
+                                <span class="record-indicator">
+                                    <span class="record-pulse"></span>
+                                </span>
+                                Render Video
+                            </button>
+                            <span style="font-size: 9px; color: rgba(240, 248, 255, 0.705);">Auto Download- DO NOT
+                                Interupt</span>
+                        </div>
                     </div>
                 </div>
                 <div class="toolbar-status-bar">
@@ -319,8 +323,34 @@
         </section>
     </div>
 
+    <div id="customCanvasContainer">
+        <div class="layout-sidebar">
+            <button id="close_layout_creator" class="btn-secondary">
+                ✕ Close
+            </button>
+
+            <button id="create_layout" class="btn-primary">
+                + Create Layout
+            </button>
+
+            <div id="saved_layouts"></div>
+
+            <div class="layout-save-group">
+                <input id="layout_name" type="text" placeholder="Layout Name">
+                <button id="save_layout" class="btn-primary">
+                    Save Layout
+                </button>
+            </div>
+        </div>
+
+        <div class="layout-canvas-wrapper">
+            <canvas id="custom_canvas"></canvas>
+        </div>
+    </div>
+
     <script type="module" src="/src/index.ts"></script>
     <script type="module" src="/src/ui.ts"></script>
+    <script type="module" src="/src/create_layout.ts"></script>
 </body>
 
 </html>

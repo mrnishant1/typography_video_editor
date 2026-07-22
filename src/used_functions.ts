@@ -1,4 +1,5 @@
-import { drawTextInBox, Layout } from "./draw_dynamicText";
+// import { custom_layout } from "./create_layout";
+import { Custom_Layouts, drawTextInBox, Layout } from "./draw_dynamicText";
 import type { Box, CachedGlyph, CanvasTextProperties, SubtitleEntry, SubtitleStyleOptions, WordEntry } from "./types";
 import { recordFrames } from "./videorecord";
 
@@ -182,6 +183,29 @@ export function applyTextStyles(ctx: CanvasRenderingContext2D | null, styles: Pa
   ctx.textAlign = styles.textAlign || "left";
 }
 
+export function getWordsPerRender(): number {
+  return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
+}
+
+export function recordingVideo(canvas: HTMLCanvasElement, time: number, audio?: HTMLAudioElement | number | null): void {
+  const recording = recordFrames(canvas, time);
+
+  // play it on another video element
+  var video$ = document.createElement("video");
+  document.body.appendChild(video$);
+  recording.then((url) => video$.setAttribute("src", url));
+
+  // download it
+  var link$ = document.createElement("a");
+  link$.innerText = "download";
+  const ext = MediaRecorder.isTypeSupported("video/mp4") ? "mp4" : "webm";
+  link$.setAttribute("download", `recordingVideo.${ext}`);
+  recording.then((url) => {
+    link$.setAttribute("href", url);
+    link$.click();
+  });
+}
+
 export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: number, ctx: CanvasRenderingContext2D | null, incomingStyles: Partial<SubtitleStyleOptions> = {}): number | null {
   let i = jsonSubtitles;
   const sentence = i.text.split(" "); //sentence but in form of array
@@ -202,9 +226,9 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
     shadowOffsetY: incomingStyles.shadowOffsetY || 10,
     textAlign: incomingStyles.textAlign || "left",
   };
-  let layout: Layout | null = null;
+  let layout: Layout | Custom_Layouts | null = null;
   let count: number | null = null;
-
+//=================Word + Subtitle Layout renderer===============================
   function per_ms_render(timestamp: number) {
     if (!prev_timestamp) prev_timestamp = timestamp;
     const deltaTime = timestamp - prev_timestamp;
@@ -217,13 +241,18 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
       lastStyledIndex = visibleCharsIndex;
       per_line_chaching.clear();
 
-      //Making parent Box Layout for next text batch
+      //=====================================Subtitle Layout=============================================
+      // layout =
+      //   custom_layout.boxes.length >= char_per_line
+      //     ? custom_layout
+      //     : 
+      // layout = custom_layout
       layout = new Layout({
-        x: window.LayoutX || canvasWidth * 0.1,
-        y: window.LayoutY || canvasWidth * 0.1,
-        width: window.LayoutWidth || canvasWidth * 0.8,
-        height: window.LayoutHeight || canvasHeight * 0.8,
-      });
+              x: window.LayoutX || canvasWidth * 0.1,
+              y: window.LayoutY || canvasWidth * 0.1,
+              width: window.LayoutWidth || canvasWidth * 0.8,
+              height: window.LayoutHeight || canvasHeight * 0.8,
+            });
 
       count = layout.fill_parentBox(Number(fh), Number(ms));
 
@@ -251,8 +280,8 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
       // ctx.strokeStyle = "rgb(68, 0, 255)";
       // ctx.strokeRect(layout!.parent.x, layout!.parent.y, layout!.parent.width, layout!.parent.height);
       // ctx.stroke();
-      // ctx.strokeStyle = "rgb(0, 0, 0)";
-      // ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
+      ctx.strokeStyle = "rgb(0, 0, 0)";
+      ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
 
       // console.log(layout ? "" : "fuck layout not ");
       drawTextInBox(textToDraw, ctx, textBox, fh, styles);
@@ -260,7 +289,7 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
 
     if (visibleCharsIndex !== lastStyledIndex) {
       per_line_chaching.forEach((cachedStyle, cachedIndex) => {
-        if (cachedIndex === visibleCharsIndex) return;
+        // if (cachedIndex === visibleCharsIndex) return;
         drawTextInBox(cachedStyle.text, ctx, cachedStyle.box, cachedStyle.fh, cachedStyle);
       });
       //On change in index reset x
@@ -291,26 +320,4 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
 
   pr_ms_FrameID = requestAnimationFrame(per_ms_render);
   return pr_ms_FrameID;
-}
-export function getWordsPerRender(): number {
-  return parseInt((document.getElementsByName("Word_per_render")[0] as HTMLSelectElement)?.value, 10) || 4;
-}
-
-export function recordingVideo(canvas: HTMLCanvasElement, time: number, audio?:HTMLAudioElement | number | null): void {
-  const recording = recordFrames(canvas, time);
-
-  // play it on another video element
-  var video$ = document.createElement("video");
-  document.body.appendChild(video$);
-  recording.then((url) => video$.setAttribute("src", url));
-
-  // download it
-  var link$ = document.createElement("a");
-  link$.innerText = "download";
-  const ext = MediaRecorder.isTypeSupported("video/mp4") ? "mp4" : "webm";
-  link$.setAttribute("download", `recordingVideo.${ext}`);
-  recording.then((url) => {
-    link$.setAttribute("href", url);
-    link$.click();
-  });
 }

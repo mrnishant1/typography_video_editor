@@ -66,6 +66,10 @@ export interface Box extends Rect {
   centerY: number;
   orientation: 0 | 90;
 }
+export interface Timeline{
+  start: number 
+  end: number
+}
 
 export interface CachedGlyph {
   text: string;
@@ -99,6 +103,7 @@ declare global {
     LayoutY?:number
     LayoutWidth?:number
     LayoutHeight?:number
+    GlobalTimeline?:number
   }
 
   interface HTMLCanvasElement {

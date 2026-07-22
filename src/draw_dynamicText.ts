@@ -4,7 +4,7 @@
 // then splits the leftover into up to two new free rects (guillotine cut).
 
 import { applyTextStyles } from "./used_functions";
-import type { Box, Rect, SubtitleStyleOptions } from "./types";
+import type { Box, Rect, SubtitleStyleOptions, Timeline } from "./types";
 
 export class Layout {
   parent: Rect;
@@ -122,12 +122,33 @@ function fitFontSize(ctx: CanvasRenderingContext2D, text: string, maxWidth: numb
   return best;
 }
 
+export class Custom_Layouts {
+  boxes: Box[];
+  timeLine: Timeline;
+  box_count: number;
+  LayoutName:string;
+  
+  constructor(layoutName:string,boxes: Box[], { time_start, time_end }: { time_start: number; time_end: number }) {
+    this.LayoutName = layoutName
+    this.boxes = boxes;
+    this.timeLine = {
+      start: time_start,
+      end: time_end,
+    };
+    this.box_count = this.boxes.length || 0;
+  }
+
+  fill_parentBox(fh: number, ms: number) {
+    return this.boxes.length;
+  }
+}
+
 export function drawTextInBox(
   text: string,
   ctx: CanvasRenderingContext2D | null,
   box: Box | null,
   fontHeight: string | number,
-  styles: Partial<SubtitleStyleOptions> = window.subtitleStyleOptions || {}
+  styles: Partial<SubtitleStyleOptions> = window.subtitleStyleOptions || {},
 ): void {
   const padding = 0;
   if (!text || !ctx || !box || !fontHeight) {
@@ -143,7 +164,7 @@ export function drawTextInBox(
 
   const fontSize = fitFontSize(ctx, text, availableLength, availableThickness);
 
-  if (fontSize < 1) return; // box too small to fit even 1px text — skip
+  // if (fontSize < 1) return; // box too small to fit even 1px text — skip
 
   // Apply the same fitted font, position, and styles to both drawing calls.
   // Calling strokeText outside this function would use a different baseline/font.
@@ -162,8 +183,10 @@ export function drawTextInBox(
     ctx.translate(box.centerX, box.centerY);
     ctx.rotate(Math.PI / 2);
     ctx.textAlign = "left";
-    const x = -box.height / 2 + padding / 2;
-    const y = 0;
+    const x = -box.centerY / 2 + padding / 2;
+    const y = -box.centerX / 2 + padding / 2;
+    // const x = -box.height / 2 + padding / 2;
+    // const y = 0;
     ctx.strokeText(text, x, y);
     ctx.fillText(text, x, y);
   }
