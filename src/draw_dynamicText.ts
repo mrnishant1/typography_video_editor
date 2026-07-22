@@ -126,10 +126,10 @@ export class Custom_Layouts {
   boxes: Box[];
   timeLine: Timeline;
   box_count: number;
-  LayoutName:string;
-  
-  constructor(layoutName:string,boxes: Box[], { time_start, time_end }: { time_start: number; time_end: number }) {
-    this.LayoutName = layoutName
+  LayoutName: string;
+
+  constructor(layoutName: string, boxes: Box[], { time_start, time_end }: { time_start: number; time_end: number }) {
+    this.LayoutName = layoutName;
     this.boxes = boxes;
     this.timeLine = {
       start: time_start,
@@ -163,8 +163,9 @@ export function drawTextInBox(
   const availableThickness = Math.min(Number(fontHeight), box.orientation === 0 ? box.height : box.width) - padding;
 
   const fontSize = fitFontSize(ctx, text, availableLength, availableThickness);
+  if (fontSize < 1) return; // Guard against 0px rendering
 
-  // if (fontSize < 1) return; // box too small to fit even 1px text — skip
+  ctx.save(); // Save at function entry
 
   // Apply the same fitted font, position, and styles to both drawing calls.
   // Calling strokeText outside this function would use a different baseline/font.
@@ -172,24 +173,24 @@ export function drawTextInBox(
   let fontFamily = styles.fontFamily || styles.font?.replace(/^[\d.]+px\s+/, "") || "sans-serif";
   ctx.font = `${fontSize}px ${fontFamily}`;
 
+  ctx.textBaseline = "middle";
+
   if (box.orientation === 0) {
     ctx.textAlign = "left";
-    const x = box.x + padding / 2;
+
+    const x = box.x + padding;
     const y = box.y + box.height / 2;
+
     ctx.strokeText(text, x, y);
     ctx.fillText(text, x, y);
   } else {
-    // vertical orientation: rotate around the box's center, text runs top-to-bottom
+    console.log(box);
     ctx.translate(box.centerX, box.centerY);
     ctx.rotate(Math.PI / 2);
     ctx.textAlign = "left";
-    const x = -box.centerY / 2 + padding / 2;
-    const y = -box.centerX / 2 + padding / 2;
-    // const x = -box.height / 2 + padding / 2;
-    // const y = 0;
-    ctx.strokeText(text, x, y);
-    ctx.fillText(text, x, y);
+    ctx.strokeText(text,box.centerX, box.centerY);
+    ctx.fillText(text, box.centerX, box.centerY);
   }
 
-  ctx.restore();
+  ctx.restore(); // Single balanced restore
 }

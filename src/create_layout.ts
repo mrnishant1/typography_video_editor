@@ -1,4 +1,4 @@
-import { Custom_Layouts } from "./draw_dynamicText";
+import { Custom_Layouts, drawTextInBox } from "./draw_dynamicText";
 import { Box } from "./types";
 export const Custom_layouts: Custom_Layouts[] = [];
 
@@ -40,6 +40,7 @@ if (canvas) {
   //==========Save Layout==========================
   const saveLayoutBtn = document.getElementById("save_layout");
   const savedLayouts = document.getElementById("saved_layouts");
+  const clearLayouts = document.getElementById("clear_layout");
 
   saveLayoutBtn?.addEventListener("click", () => {
     const layoutNameInput = document.getElementById("layout_name") as HTMLInputElement;
@@ -69,6 +70,21 @@ if (canvas) {
   });
 
   //==========Create New Layout==========================
+  clearLayouts?.addEventListener("click", () => {
+    if (!isLayout_Saved && Boxes.length >= 1) {
+      const keepExisting = confirm("Do you want to keep the existing layout?");
+      if (keepExisting) {
+        return;
+      }
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    Boxes = [];
+    isLayout_Saved = false;
+  });
+
+  //==========Create New Layout==========================
   if (create_new_layout) {
     create_new_layout.addEventListener("click", () => {
       if (!isLayout_Saved) {
@@ -81,6 +97,7 @@ if (canvas) {
         }
       }
       Boxes = [];
+      isLayout_Saved = false;
     });
   }
 
@@ -114,9 +131,12 @@ if (canvas) {
       const context = ctx;
       context.clearRect(0, 0, canvas.width, canvas.height);
       Boxes.forEach((box) => {
+        drawTextInBox("Looks like", ctx, box, window.LayoutHeight || 200);
         context.strokeRect(box.x, box.y, box.width, box.height);
       });
       context.strokeStyle = "blue";
+      const box: Box = { x: x, y: y, width: width, height: height, centerX: (x + width) / 2, centerY: (x + height) / 2, orientation: width > height ? 0 : 90 };
+      drawTextInBox("Looks like", ctx, box, window.LayoutHeight || 200);
       context.strokeRect(x, y, width, height);
     }
   });
@@ -124,7 +144,8 @@ if (canvas) {
   canvas.addEventListener("mouseup", () => {
     isMouseDown = false;
     if (x && y && width && height) {
-      Boxes.push({ x: x, y: y, width: width, height: height, centerX: (x + width) / 2, centerY: (x + height) / 2, orientation: width > height ? 0 : 90 });
+      const box: Box = { x: x, y: y, width: width, height: height, centerX: (x + width) / 2, centerY: (x + height) / 2, orientation: width > height ? 0 : 90 };
+      Boxes.push(box);
     } else {
       return;
     }
