@@ -280,8 +280,8 @@ export function renderInstanceSubtitle(jsonSubtitles: WordEntry, char_per_line: 
       // ctx.strokeStyle = "rgb(68, 0, 255)";
       // ctx.strokeRect(layout!.parent.x, layout!.parent.y, layout!.parent.width, layout!.parent.height);
       // ctx.stroke();
-      ctx.strokeStyle = "rgb(0, 0, 0)";
-      ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
+      // ctx.strokeStyle = "rgb(0, 0, 0)";
+      // ctx.strokeRect(textBox.x, textBox.y, textBox.width, textBox.height);
 
       // console.log(layout ? "" : "fuck layout not ");
       drawTextInBox(textToDraw, ctx, textBox, fh, styles);

@@ -131,12 +131,12 @@ if (canvas) {
       const context = ctx;
       context.clearRect(0, 0, canvas.width, canvas.height);
       Boxes.forEach((box) => {
-        drawTextInBox("Looks like", ctx, box, window.LayoutHeight || 200);
+        drawTextInBox("Looks like", ctx, box, window.subtitleStyleOptions.fontSize);
         context.strokeRect(box.x, box.y, box.width, box.height);
       });
       context.strokeStyle = "blue";
       const box: Box = { x: x, y: y, width: width, height: height, centerX: (x + width) / 2, centerY: (x + height) / 2, orientation: width > height ? 0 : 90 };
-      drawTextInBox("Looks like", ctx, box, window.LayoutHeight || 200);
+      drawTextInBox("Looks like", ctx, box, window.subtitleStyleOptions.fontSize);
       context.strokeRect(x, y, width, height);
     }
   });

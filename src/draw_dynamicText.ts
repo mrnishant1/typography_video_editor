@@ -184,13 +184,14 @@ export function drawTextInBox(
     ctx.strokeText(text, x, y);
     ctx.fillText(text, x, y);
   } else {
-    console.log(box);
-    ctx.translate(box.centerX, box.centerY);
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    ctx.textAlign = "center";
+    ctx.translate(centerX, centerY);
     ctx.rotate(Math.PI / 2);
-    ctx.textAlign = "left";
-    ctx.strokeText(text,box.centerX, box.centerY);
-    ctx.fillText(text, box.centerX, box.centerY);
-  }
 
+    ctx.strokeText(text, 0, 0);
+    ctx.fillText(text, 0, 0);
+  }
   ctx.restore(); // Single balanced restore
 }
